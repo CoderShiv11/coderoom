@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 
 const BACKEND_URL = "https://coderoom-backend-muah.onrender.com";
@@ -12,15 +12,41 @@ function App() {
   const [code, setCode] = useState("");
   const [output, setOutput] = useState("");
   const [online, setOnline] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
+  const [resultStatus, setResultStatus] = useState("");
 
   const ws = useRef(null);
 
-  // 🔥 STATIC PROBLEM (same for both users)
+  // 🔥 Shared Problem
   const problem = {
     title: "Sum of Even Numbers",
     description:
       "You are given a number N. Print the sum of all even numbers from 1 to N (inclusive).",
     example: "Input: 10\nOutput: 30",
+    expectedOutput: "30",
+  };
+
+  // ⏳ Timer
+  useEffect(() => {
+    if (!joined) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [joined]);
+
+  const formatTime = () => {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
   };
 
   const joinRoom = () => {
@@ -66,7 +92,28 @@ function App() {
       const res = await axios.post(`${BACKEND_URL}/run`, {
         code: code,
       });
+
       setOutput(res.data.output);
+      setResultStatus("");
+    } catch {
+      setOutput("Error running code");
+    }
+  };
+
+  const submitCode = async () => {
+    try {
+      const res = await axios.post(`${BACKEND_URL}/run`, {
+        code: code,
+      });
+
+      const result = res.data.output.trim();
+      setOutput(result);
+
+      if (result === problem.expectedOutput) {
+        setResultStatus("✅ Correct Solution!");
+      } else {
+        setResultStatus("❌ Wrong Answer. Try Again.");
+      }
     } catch {
       setOutput("Error running code");
     }
@@ -111,10 +158,13 @@ function App() {
         <div>
           🚀 Room: <span className="text-green-400">{room}</span> | Online: {online}
         </div>
-        <div>User: {username}</div>
+        <div className="flex gap-6 items-center">
+          ⏳ {formatTime()}
+          <span>User: {username}</span>
+        </div>
       </div>
 
-      {/* 🔥 Problem Box */}
+      {/* Problem Box */}
       <div className="bg-gray-800 p-4 border-b border-gray-700">
         <h2 className="text-xl font-bold mb-2">📘 {problem.title}</h2>
         <p className="text-sm mb-2">{problem.description}</p>
@@ -123,7 +173,6 @@ function App() {
         </pre>
       </div>
 
-      {/* Main Section */}
       <div className="flex flex-1 overflow-hidden">
 
         {/* Code Section */}
@@ -136,16 +185,31 @@ function App() {
             placeholder="Write your solution here..."
           />
 
-          <button
-            onClick={runCode}
-            className="bg-blue-600 py-2 rounded-lg font-semibold"
-          >
-            ▶ Run Code
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={runCode}
+              className="flex-1 bg-blue-600 py-2 rounded-lg font-semibold"
+            >
+              ▶ Run Code
+            </button>
+
+            <button
+              onClick={submitCode}
+              className="flex-1 bg-purple-600 py-2 rounded-lg font-semibold"
+            >
+              🚀 Submit
+            </button>
+          </div>
 
           <div className="bg-black p-4 rounded-lg h-32 overflow-auto border border-gray-700 text-sm">
             <pre>{output}</pre>
           </div>
+
+          {resultStatus && (
+            <div className="text-lg font-semibold">
+              {resultStatus}
+            </div>
+          )}
         </div>
 
         {/* Chat Section */}
