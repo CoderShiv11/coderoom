@@ -78,6 +78,12 @@ def set_problem(room: str, problem: ProblemRequest):
 def get_problem(room: str):
     return room_problems.get(room, {})
 
+# 🔥 Delete Problem
+@app.delete("/delete-problem/{room}")
+def delete_problem(room: str):
+    if room in room_problems:
+        del room_problems[room]
+    return {"message": "Problem deleted"}
 
 @app.websocket("/ws/{room}/{username}")
 async def websocket_endpoint(websocket: WebSocket, room: str, username: str):
