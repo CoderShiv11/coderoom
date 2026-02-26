@@ -18,49 +18,57 @@ MAX_USERS = 10
 
 rooms = {}
 room_passwords = {}
-room_problems = {}
 room_scores = {}
-room_submissions = {}
+room_problems = {}
 room_timer_running = {}
 room_time = {}
 room_admin = {}
 
-# =====================================================
-# WEBSOCKET
-# =====================================================
-@app.websocket("/ws/{room}/{username}/{password}")
-async def websocket_endpoint(websocket: WebSocket, room: str, username: str, password: str):
-    await websocket.accept()
+# ========================= WEBSOCKET =========================
+@app.websocket("/ws/{room}/{username}/{password}/{admin}")
+async def websocket_endpoint(websocket: WebSocket, room: str, username: str, password: str, admin: str):
 
-    # If room does not exist → create it
+    is_admin = admin == "true"
+
+    # ROOM NOT EXIST
     if room not in rooms:
+        if not is_admin:
+            await websocket.accept()
+            await websocket.send_json({"type": "room_not_found"})
+            await websocket.close()
+            return
+
+        # Create room
         rooms[room] = []
         room_scores[room] = {}
-        room_submissions[room] = []
         room_timer_running[room] = False
         room_time[room] = 0
         room_admin[room] = username
         room_passwords[room] = password
 
     else:
-        # Room exists → check password
+        # Validate password
         if room_passwords.get(room) != password:
+            await websocket.accept()
             await websocket.send_json({"type": "wrong_password"})
             await websocket.close()
             return
 
-    # Room full check
+    # Limit users
     if len(rooms[room]) >= MAX_USERS:
+        await websocket.accept()
         await websocket.send_json({"type": "room_full"})
         await websocket.close()
         return
+
+    await websocket.accept()
 
     rooms[room].append(websocket)
     room_scores[room][username] = 0
 
     await broadcast_online(room)
-    await broadcast_leaderboard(room)
     await broadcast_timer(room)
+    await broadcast_leaderboard(room)
 
     try:
         while True:
@@ -75,14 +83,6 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str, pas
                 if correct:
                     room_scores[room][username] += 10
 
-                submission = {
-                    "user": username,
-                    "correct": correct
-                }
-
-                room_submissions[room].append(submission)
-
-                await broadcast_submission(room, submission)
                 await broadcast_leaderboard(room)
 
             if username == room_admin[room]:
@@ -110,9 +110,7 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str, pas
         await broadcast_leaderboard(room)
 
 
-# =====================================================
-# TIMER LOOP
-# =====================================================
+# ========================= TIMER LOOP =========================
 async def timer_loop():
     while True:
         for room in list(rooms.keys()):
@@ -121,24 +119,20 @@ async def timer_loop():
                 await broadcast_timer(room)
         await asyncio.sleep(1)
 
-
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(timer_loop())
 
 
-# =====================================================
-# HELPERS
-# =====================================================
+# ========================= HELPERS =========================
 def delete_room(room):
     rooms.pop(room, None)
+    room_passwords.pop(room, None)
     room_scores.pop(room, None)
-    room_submissions.pop(room, None)
-    room_problems.pop(room, None)
     room_timer_running.pop(room, None)
     room_time.pop(room, None)
     room_admin.pop(room, None)
-    room_passwords.pop(room, None)
+    room_problems.pop(room, None)
 
 
 def check_solution(room, code):
@@ -176,21 +170,12 @@ async def broadcast_online(room):
         })
 
 
-async def broadcast_submission(room, submission):
-    for connection in rooms[room]:
-        await connection.send_json({
-            "type": "submission",
-            "data": submission
-        })
-
-
 async def broadcast_leaderboard(room):
     leaderboard = sorted(
         room_scores[room].items(),
         key=lambda x: x[1],
         reverse=True
     )
-
     for connection in rooms[room]:
         await connection.send_json({
             "type": "leaderboard",
@@ -202,27 +187,20 @@ async def broadcast_timer(room):
     for connection in rooms[room]:
         await connection.send_json({
             "type": "timer",
-            "time": room_time[room],
-            "running": room_timer_running[room]
+            "time": room_time[room]
         })
 
 
 async def broadcast_end(room):
     for connection in rooms[room]:
-        await connection.send_json({
-            "type": "room_ended"
-        })
-
+        await connection.send_json({"type": "room_ended"})
     delete_room(room)
 
 
-# =====================================================
-# PROBLEM API
-# =====================================================
+# ========================= PROBLEM API =========================
 class Problem(BaseModel):
     content: str
     answer: str
-
 
 @app.post("/set-problem/{room}")
 def set_problem(room: str, problem: Problem):
@@ -230,20 +208,16 @@ def set_problem(room: str, problem: Problem):
         "content": problem.content,
         "answer": problem.answer
     }
-    return {"message": "Problem set"}
-
+    return {"message": "Problem saved"}
 
 @app.get("/get-problem/{room}")
 def get_problem(room: str):
     return room_problems.get(room, {})
 
 
-# =====================================================
-# RUN CODE
-# =====================================================
+# ========================= RUN CODE =========================
 class Code(BaseModel):
     code: str
-
 
 @app.post("/run")
 def run_code(data: Code):
