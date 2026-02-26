@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import axios from "axios";
 import Editor from "@monaco-editor/react";
 
@@ -7,31 +7,32 @@ const BACKEND_URL = "https://coderoom-backend-muah.onrender.com";
 function App() {
   const ws = useRef(null);
 
-  // Navigation states
-  const [page, setPage] = useState("home"); // home | create | join | room
+  // Navigation
+  const [page, setPage] = useState("home");
 
-  // User states
+  // User Info
   const [username, setUsername] = useState("");
   const [room, setRoom] = useState("");
   const [password, setPassword] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Room states
+  // Room Data
   const [problem, setProblem] = useState("");
   const [correctAnswer, setCorrectAnswer] = useState("");
   const [code, setCode] = useState("");
   const [output, setOutput] = useState("");
+
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
-  const [submissions, setSubmissions] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
+
   const [online, setOnline] = useState(0);
   const [timer, setTimer] = useState(0);
 
   // ================= CONNECT =================
   const connectRoom = async (adminMode) => {
     if (!username || !room || !password) {
-      alert("Fill all fields");
+      alert("Please fill all fields");
       return;
     }
 
@@ -40,6 +41,10 @@ function App() {
     ws.current = new WebSocket(
       `wss://coderoom-backend-muah.onrender.com/ws/${room}/${username}/${password}`
     );
+
+    ws.current.onopen = () => {
+      console.log("Connected");
+    };
 
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -50,24 +55,25 @@ function App() {
       }
 
       if (data.type === "room_full") {
-        alert("Room is full");
+        alert("Room is Full (Max 10 users)");
         return;
       }
 
-      if (data.type === "chat")
-        setMessages((prev) => [...prev, `${data.user}: ${data.message}`]);
-
-      if (data.type === "online")
+      if (data.type === "online") {
         setOnline(data.count);
+      }
 
-      if (data.type === "submission")
-        setSubmissions((prev) => [...prev, data.data]);
+      if (data.type === "chat") {
+        setMessages((prev) => [...prev, `${data.user}: ${data.message}`]);
+      }
 
-      if (data.type === "leaderboard")
+      if (data.type === "leaderboard") {
         setLeaderboard(data.data);
+      }
 
-      if (data.type === "timer")
+      if (data.type === "timer") {
         setTimer(data.time);
+      }
 
       if (data.type === "room_ended") {
         alert("Room ended by admin");
@@ -76,18 +82,17 @@ function App() {
     };
 
     const res = await axios.get(`${BACKEND_URL}/get-problem/${room}`);
-    if (res.data.content)
+    if (res.data.content) {
       setProblem(res.data.content);
+    }
 
     setPage("room");
   };
 
-  // ================= ROOM ACTIONS =================
+  // ================= ACTIONS =================
   const sendMessage = () => {
-    ws.current.send(JSON.stringify({
-      type: "chat",
-      message: chatInput
-    }));
+    if (!chatInput) return;
+    ws.current.send(JSON.stringify({ type: "chat", message: chatInput }));
     setChatInput("");
   };
 
@@ -97,16 +102,13 @@ function App() {
   };
 
   const submitSolution = () => {
-    ws.current.send(JSON.stringify({
-      type: "submit",
-      code
-    }));
+    ws.current.send(JSON.stringify({ type: "submit", code }));
   };
 
   const saveProblem = async () => {
     await axios.post(`${BACKEND_URL}/set-problem/${room}`, {
       content: problem,
-      answer: correctAnswer
+      answer: correctAnswer,
     });
   };
 
@@ -119,22 +121,24 @@ function App() {
   const endRoom = () =>
     ws.current.send(JSON.stringify({ type: "end_room" }));
 
-  // ================= HOME PAGE =================
+  // ================= HOME =================
   if (page === "home") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white">
-        <div className="bg-gray-900 p-10 rounded-2xl border border-gray-800 w-full max-w-md text-center space-y-6">
+      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white px-4">
+        <div className="bg-gray-900 p-10 rounded-2xl w-full max-w-md border border-gray-800 shadow-xl text-center space-y-6">
           <h1 className="text-3xl font-bold">🚀 CodeRoom</h1>
 
           <button
             onClick={() => setPage("create")}
-            className="w-full py-3 bg-green-600 rounded hover:bg-green-700">
+            className="w-full py-3 bg-green-600 rounded-lg hover:bg-green-700 transition"
+          >
             Create Room
           </button>
 
           <button
             onClick={() => setPage("join")}
-            className="w-full py-3 bg-blue-600 rounded hover:bg-blue-700">
+            className="w-full py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition"
+          >
             Join Room
           </button>
         </div>
@@ -142,71 +146,49 @@ function App() {
     );
   }
 
-  // ================= CREATE PAGE =================
-  if (page === "create") {
+  // ================= CREATE / JOIN =================
+  if (page === "create" || page === "join") {
+    const isCreate = page === "create";
+
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white">
-        <div className="bg-gray-900 p-8 rounded-xl w-full max-w-md space-y-4">
-          <h2 className="text-xl font-bold">Create Room</h2>
+      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white px-4">
+        <div className="bg-gray-900 p-8 rounded-2xl w-full max-w-md border border-gray-800 shadow-xl space-y-4">
+          <h2 className="text-xl font-bold text-center">
+            {isCreate ? "Create Room" : "Join Room"}
+          </h2>
 
-          <input className="w-full p-3 bg-gray-800 rounded"
+          <input
+            className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700"
             placeholder="Your Name"
-            onChange={(e) => setUsername(e.target.value)} />
+            onChange={(e) => setUsername(e.target.value)}
+          />
 
-          <input className="w-full p-3 bg-gray-800 rounded"
+          <input
+            className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700"
             placeholder="Room Name"
-            onChange={(e) => setRoom(e.target.value)} />
+            onChange={(e) => setRoom(e.target.value)}
+          />
 
-          <input className="w-full p-3 bg-gray-800 rounded"
-            placeholder="Room Password"
+          <input
+            className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700"
             type="password"
-            onChange={(e) => setPassword(e.target.value)} />
+            placeholder="Room Password"
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
           <button
-            onClick={() => connectRoom(true)}
-            className="w-full bg-green-600 py-3 rounded">
-            Create & Enter
+            onClick={() => connectRoom(isCreate)}
+            className={`w-full py-3 rounded-lg ${
+              isCreate ? "bg-green-600" : "bg-blue-600"
+            } hover:opacity-90 transition`}
+          >
+            {isCreate ? "Create & Enter" : "Join Room"}
           </button>
 
           <button
             onClick={() => setPage("home")}
-            className="w-full bg-gray-700 py-2 rounded">
-            Back
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ================= JOIN PAGE =================
-  if (page === "join") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white">
-        <div className="bg-gray-900 p-8 rounded-xl w-full max-w-md space-y-4">
-          <h2 className="text-xl font-bold">Join Room</h2>
-
-          <input className="w-full p-3 bg-gray-800 rounded"
-            placeholder="Your Name"
-            onChange={(e) => setUsername(e.target.value)} />
-
-          <input className="w-full p-3 bg-gray-800 rounded"
-            placeholder="Room Name"
-            onChange={(e) => setRoom(e.target.value)} />
-
-          <input className="w-full p-3 bg-gray-800 rounded"
-            placeholder="Room Password"
-            type="password"
-            onChange={(e) => setPassword(e.target.value)} />
-
-          <button
-            onClick={() => connectRoom(false)}
-            className="w-full bg-blue-600 py-3 rounded">
-            Join
-          </button>
-
-          <button
-            onClick={() => setPage("home")}
-            className="w-full bg-gray-700 py-2 rounded">
+            className="w-full py-2 bg-gray-700 rounded-lg"
+          >
             Back
           </button>
         </div>
@@ -216,91 +198,130 @@ function App() {
 
   // ================= ROOM PAGE =================
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6 max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-950 text-white px-4 py-6">
+      <div className="max-w-7xl mx-auto space-y-6">
 
-      <div className="flex justify-between items-center">
-        <div>Room: {room} | Online: {online}</div>
-        <div className="flex items-center gap-4">
-          <div>⏱ {timer}s</div>
+        {/* HEADER */}
+        <div className="flex flex-col md:flex-row justify-between items-center bg-gray-900 p-4 rounded-xl border border-gray-800">
+          <div className="text-lg font-semibold">
+            Room: <span className="text-green-400">{room}</span>
+          </div>
+
+          <div className="flex items-center gap-4 mt-3 md:mt-0">
+            <div className="bg-gray-800 px-3 py-1 rounded-full text-sm">
+              👥 Online: {online}
+            </div>
+            <div className="bg-gray-800 px-3 py-1 rounded-full text-sm">
+              ⏱ {timer}s
+            </div>
+
+            {isAdmin && (
+              <div className="flex gap-2">
+                <button onClick={startTimer}
+                  className="bg-green-600 px-3 py-1 rounded">
+                  Start
+                </button>
+                <button onClick={stopTimer}
+                  className="bg-yellow-600 px-3 py-1 rounded">
+                  Stop
+                </button>
+                <button onClick={endRoom}
+                  className="bg-red-600 px-3 py-1 rounded">
+                  End
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* PROBLEM */}
+        <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 space-y-4">
+          <h2 className="font-bold text-lg">Problem</h2>
+
+          <textarea
+            className="w-full h-28 bg-gray-800 p-3 rounded-lg border border-gray-700"
+            value={problem}
+            disabled={!isAdmin}
+            onChange={(e) => setProblem(e.target.value)}
+          />
+
           {isAdmin && (
             <>
-              <button onClick={startTimer} className="bg-green-600 px-3 py-1 rounded">Start</button>
-              <button onClick={stopTimer} className="bg-yellow-600 px-3 py-1 rounded">Stop</button>
-              <button onClick={endRoom} className="bg-red-600 px-3 py-1 rounded">End</button>
+              <input
+                className="w-full bg-gray-800 p-3 rounded-lg border border-gray-700"
+                placeholder="Correct Output"
+                onChange={(e) => setCorrectAnswer(e.target.value)}
+              />
+              <button
+                onClick={saveProblem}
+                className="bg-purple-600 px-4 py-2 rounded-lg"
+              >
+                Save Problem
+              </button>
             </>
           )}
         </div>
-      </div>
 
-      <div className="bg-gray-900 p-4 rounded space-y-3">
-        <textarea
-          className="w-full h-24 bg-gray-800 p-2 rounded"
-          value={problem}
-          disabled={!isAdmin}
-          onChange={(e) => setProblem(e.target.value)}
-        />
+        {/* GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {isAdmin && (
-          <>
-            <input
-              className="w-full bg-gray-800 p-2 rounded"
-              placeholder="Correct Answer"
-              onChange={(e) => setCorrectAnswer(e.target.value)}
-            />
-            <button
-              onClick={saveProblem}
-              className="bg-purple-600 px-4 py-2 rounded">
-              Save Problem
-            </button>
-          </>
-        )}
-      </div>
+          {/* EDITOR */}
+          <div className="lg:col-span-2 space-y-4">
+            <div className="h-[400px] border border-gray-800 rounded-xl overflow-hidden">
+              <Editor
+                height="100%"
+                language="python"
+                theme="vs-dark"
+                value={code}
+                onChange={(value) => setCode(value)}
+              />
+            </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+            <div className="flex gap-3">
+              <button onClick={runCode}
+                className="bg-blue-600 px-4 py-2 rounded-lg">
+                Run
+              </button>
+              <button onClick={submitSolution}
+                className="bg-green-600 px-4 py-2 rounded-lg">
+                Submit
+              </button>
+            </div>
 
-        <div className="lg:col-span-2 space-y-4">
-          <div className="h-96 border border-gray-800">
-            <Editor height="100%" language="python"
-              theme="vs-dark"
-              value={code}
-              onChange={(v) => setCode(v)} />
+            <div className="bg-black p-3 rounded-lg h-32 overflow-auto border border-gray-800">
+              <pre>{output}</pre>
+            </div>
           </div>
 
-          <div className="flex gap-3">
-            <button onClick={runCode} className="bg-blue-600 px-4 py-2 rounded">Run</button>
-            <button onClick={submitSolution} className="bg-green-600 px-4 py-2 rounded">Submit</button>
-          </div>
+          {/* RIGHT PANEL */}
+          <div className="space-y-6">
+            <div className="bg-gray-900 p-4 rounded-xl border border-gray-800 h-40 overflow-auto">
+              <h3 className="font-bold mb-2">🏆 Leaderboard</h3>
+              {leaderboard.map((u, i) => (
+                <div key={i}>{u[0]} - {u[1]} pts</div>
+              ))}
+            </div>
 
-          <div className="bg-black p-3 h-24 overflow-auto">
-            <pre>{output}</pre>
-          </div>
-        </div>
+            <div className="bg-gray-900 p-4 rounded-xl border border-gray-800 h-40 overflow-auto">
+              <h3 className="font-bold mb-2">💬 Chat</h3>
+              {messages.map((m, i) => (
+                <div key={i}>{m}</div>
+              ))}
+            </div>
 
-        <div className="space-y-4">
-
-          <div className="bg-gray-900 p-3 rounded h-40 overflow-auto">
-            <h3>Leaderboard</h3>
-            {leaderboard.map((u, i) => (
-              <div key={i}>{u[0]} - {u[1]}</div>
-            ))}
-          </div>
-
-          <div className="bg-gray-900 p-3 rounded h-40 overflow-auto">
-            <h3>Chat</h3>
-            {messages.map((m, i) => (
-              <div key={i}>{m}</div>
-            ))}
-          </div>
-
-          <div className="flex gap-2">
-            <input
-              className="flex-1 bg-gray-800 p-2 rounded"
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-            />
-            <button onClick={sendMessage} className="bg-green-600 px-3 rounded">
-              Send
-            </button>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 bg-gray-800 p-2 rounded-lg border border-gray-700"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+              />
+              <button
+                onClick={sendMessage}
+                className="bg-green-600 px-3 rounded-lg"
+              >
+                Send
+              </button>
+            </div>
           </div>
 
         </div>
