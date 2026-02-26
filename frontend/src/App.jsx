@@ -118,21 +118,21 @@ function App() {
   }
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col">
+    <div className="h-screen flex flex-col bg-gray-900 text-white">
 
       {/* HEADER */}
-      <div className="flex justify-between items-center px-8 py-4 bg-gray-800 border-b border-gray-700">
-        <div className="font-semibold">
+      <div className="flex justify-between items-center px-6 py-3 bg-gray-800 border-b border-gray-700">
+        <div>
           Room: <span className="text-green-400">{room}</span> | Online: {online}
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <span>User: {username}</span>
 
           {isAdmin && (
             <button
               onClick={setNewProblem}
-              className="bg-purple-600 px-4 py-1 rounded"
+              className="bg-purple-600 px-3 py-1 rounded"
             >
               Set Problem
             </button>
@@ -140,10 +140,10 @@ function App() {
         </div>
       </div>
 
-      {/* PROBLEM SECTION */}
+      {/* PROBLEM */}
       {problem.title && (
-        <div className="px-8 py-4 bg-gray-800 border-b border-gray-700">
-          <h2 className="text-xl font-bold mb-2">{problem.title}</h2>
+        <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
+          <h2 className="text-lg font-bold mb-1">{problem.title}</h2>
           <p className="text-sm mb-2">{problem.description}</p>
           <pre className="bg-gray-700 p-3 rounded text-sm">
 {problem.example}
@@ -151,15 +151,15 @@ function App() {
         </div>
       )}
 
-      {/* MAIN CONTENT */}
-      <div className="flex flex-1 overflow-hidden px-8 py-6 gap-6">
+      {/* MAIN SECTION */}
+      <div className="flex flex-1 min-h-0">
 
-        {/* EDITOR SIDE */}
-        <div className="flex flex-col w-[70%] gap-4">
+        {/* EDITOR */}
+        <div className="flex flex-col flex-[2] min-h-0 p-4 gap-3">
 
-          <div className="rounded-lg overflow-hidden border border-gray-700">
+          <div className="flex-1 min-h-0 border border-gray-700 rounded overflow-hidden">
             <Editor
-              height="400px"
+              height="100%"
               language="python"
               theme="vs-dark"
               value={code}
@@ -178,22 +178,19 @@ function App() {
             ▶ Run Code
           </button>
 
-          <div className="bg-black p-4 h-32 rounded border border-gray-700 overflow-auto text-sm">
+          <div className="h-28 bg-black p-3 rounded border border-gray-700 overflow-auto text-sm">
             <pre>{output}</pre>
           </div>
         </div>
 
-        {/* CHAT SIDE */}
-        <div className="flex flex-col w-[30%] border border-gray-700 rounded-lg p-4 bg-gray-800">
+        {/* CHAT */}
+        <div className="flex flex-col flex-1 min-h-0 border-l border-gray-700 p-4">
 
-          <h2 className="font-semibold mb-4">💬 Live Chat</h2>
+          <h2 className="font-semibold mb-3">💬 Live Chat</h2>
 
-          <div className="flex-1 overflow-auto mb-3 space-y-2">
+          <div className="flex-1 min-h-0 overflow-auto mb-3 space-y-2">
             {messages.map((msg, i) => (
-              <div
-                key={i}
-                className="bg-gray-700 p-2 rounded text-sm"
-              >
+              <div key={i} className="bg-gray-800 p-2 rounded text-sm">
                 {msg}
               </div>
             ))}
