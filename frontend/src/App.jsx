@@ -9,11 +9,19 @@ function App() {
   const [joined, setJoined] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const [code, setCode] = useState("print('Hello Shivtej 🚀')");
+  const [code, setCode] = useState("");
   const [output, setOutput] = useState("");
   const [online, setOnline] = useState(0);
 
   const ws = useRef(null);
+
+  // 🔥 STATIC PROBLEM (same for both users)
+  const problem = {
+    title: "Sum of Even Numbers",
+    description:
+      "You are given a number N. Print the sum of all even numbers from 1 to N (inclusive).",
+    example: "Input: 10\nOutput: 30",
+  };
 
   const joinRoom = () => {
     if (!username || !room) return;
@@ -21,10 +29,6 @@ function App() {
     ws.current = new WebSocket(
       `wss://coderoom-backend-muah.onrender.com/ws/${room}/${username}`
     );
-
-    ws.current.onopen = () => {
-      console.log("Connected");
-    };
 
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -39,10 +43,6 @@ function App() {
       if (data.type === "online") {
         setOnline(data.count);
       }
-    };
-
-    ws.current.onerror = (err) => {
-      console.error("WebSocket error", err);
     };
 
     setJoined(true);
@@ -94,7 +94,7 @@ function App() {
 
           <button
             onClick={joinRoom}
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 py-2 rounded-lg font-semibold shadow-md hover:scale-[1.02] transition"
+            className="w-full bg-green-500 py-2 rounded-lg font-semibold"
           >
             Join Room
           </button>
@@ -106,6 +106,7 @@ function App() {
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-900 text-white">
 
+      {/* Header */}
       <div className="flex justify-between items-center px-6 py-3 bg-gray-800 border-b border-gray-700">
         <div>
           🚀 Room: <span className="text-green-400">{room}</span> | Online: {online}
@@ -113,19 +114,31 @@ function App() {
         <div>User: {username}</div>
       </div>
 
-      <div className="flex flex-1 w-full overflow-hidden">
+      {/* 🔥 Problem Box */}
+      <div className="bg-gray-800 p-4 border-b border-gray-700">
+        <h2 className="text-xl font-bold mb-2">📘 {problem.title}</h2>
+        <p className="text-sm mb-2">{problem.description}</p>
+        <pre className="bg-gray-700 p-3 rounded text-sm">
+{problem.example}
+        </pre>
+      </div>
 
+      {/* Main Section */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* Code Section */}
         <div className="flex flex-col flex-[2] p-5 gap-4">
 
           <textarea
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className="flex-1 bg-black p-4 rounded-lg resize-none w-full border border-gray-700 shadow-inner text-sm"
+            className="flex-1 bg-black p-4 rounded-lg resize-none border border-gray-700 text-sm"
+            placeholder="Write your solution here..."
           />
 
           <button
             onClick={runCode}
-            className="bg-gradient-to-r from-blue-500 to-indigo-600 py-2 rounded-lg font-semibold shadow-md hover:scale-[1.02] transition"
+            className="bg-blue-600 py-2 rounded-lg font-semibold"
           >
             ▶ Run Code
           </button>
@@ -135,6 +148,7 @@ function App() {
           </div>
         </div>
 
+        {/* Chat Section */}
         <div className="flex flex-col flex-1 border-l border-gray-700 p-5">
 
           <h2 className="text-lg font-semibold mb-3">💬 Live Chat</h2>
@@ -159,13 +173,12 @@ function App() {
             />
             <button
               onClick={sendMessage}
-              className="bg-green-500 px-4 rounded-lg font-semibold hover:scale-[1.05] transition"
+              className="bg-green-500 px-4 rounded-lg font-semibold"
             >
               Send
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
