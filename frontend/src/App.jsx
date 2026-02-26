@@ -80,7 +80,7 @@ function App() {
 
   if (!joined) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-900 text-white">
+      <div className="h-screen w-full flex items-center justify-center bg-gray-900 text-white">
         <div className="bg-gray-800 p-8 rounded-xl w-96 shadow-lg">
           <h1 className="text-xl font-bold mb-6 text-center">
             🚀 Join CodeRoom
@@ -118,21 +118,21 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-900 text-white">
+    <div className="h-screen w-full bg-gray-900 text-white flex flex-col">
 
       {/* HEADER */}
-      <div className="flex justify-between items-center px-6 py-3 bg-gray-800 border-b border-gray-700">
+      <div className="w-full flex justify-between items-center px-8 py-4 bg-gray-800 border-b border-gray-700">
         <div>
           Room: <span className="text-green-400">{room}</span> | Online: {online}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <span>User: {username}</span>
 
           {isAdmin && (
             <button
               onClick={setNewProblem}
-              className="bg-purple-600 px-3 py-1 rounded"
+              className="bg-purple-600 px-4 py-1 rounded"
             >
               Set Problem
             </button>
@@ -142,7 +142,7 @@ function App() {
 
       {/* PROBLEM */}
       {problem.title && (
-        <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
+        <div className="w-full px-8 py-4 bg-gray-800 border-b border-gray-700">
           <h2 className="text-lg font-bold mb-1">{problem.title}</h2>
           <p className="text-sm mb-2">{problem.description}</p>
           <pre className="bg-gray-700 p-3 rounded text-sm">
@@ -151,14 +151,15 @@ function App() {
         </div>
       )}
 
-      {/* MAIN SECTION */}
-      <div className="flex flex-1 min-h-0">
+      {/* MAIN CONTENT */}
+      <div className="flex flex-1 w-full">
 
-        {/* EDITOR */}
-        <div className="flex flex-col flex-[2] min-h-0 p-4 gap-3">
+        {/* EDITOR SECTION */}
+        <div className="flex flex-col w-2/3 p-6 gap-4">
 
-          <div className="flex-1 min-h-0 border border-gray-700 rounded overflow-hidden">
+          <div className="flex-1 border border-gray-700 rounded overflow-hidden">
             <Editor
+              key={room}
               height="100%"
               language="python"
               theme="vs-dark"
@@ -178,17 +179,17 @@ function App() {
             ▶ Run Code
           </button>
 
-          <div className="h-28 bg-black p-3 rounded border border-gray-700 overflow-auto text-sm">
+          <div className="h-32 bg-black p-3 rounded border border-gray-700 overflow-auto text-sm">
             <pre>{output}</pre>
           </div>
         </div>
 
-        {/* CHAT */}
-        <div className="flex flex-col flex-1 min-h-0 border-l border-gray-700 p-4">
+        {/* CHAT SECTION */}
+        <div className="flex flex-col w-1/3 border-l border-gray-700 p-6">
 
-          <h2 className="font-semibold mb-3">💬 Live Chat</h2>
+          <h2 className="font-semibold mb-4">💬 Live Chat</h2>
 
-          <div className="flex-1 min-h-0 overflow-auto mb-3 space-y-2">
+          <div className="flex-1 overflow-auto mb-3 space-y-2">
             {messages.map((msg, i) => (
               <div key={i} className="bg-gray-800 p-2 rounded text-sm">
                 {msg}
