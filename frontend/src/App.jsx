@@ -7,35 +7,26 @@ const BACKEND_URL = "https://coderoom-backend-muah.onrender.com";
 function App() {
   const ws = useRef(null);
 
-  // Auth / Room
+  // Join States
   const [username, setUsername] = useState("");
   const [room, setRoom] = useState("");
   const [joined, setJoined] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Core states
+  // Core States
   const [problem, setProblem] = useState("");
   const [correctAnswer, setCorrectAnswer] = useState("");
   const [code, setCode] = useState("");
   const [output, setOutput] = useState("");
 
   const [messages, setMessages] = useState([]);
-  const [submissions, setSubmissions] = useState([]);
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [online, setOnline] = useState(0);
-  const [timer, setTimer] = useState(0);
   const [chatInput, setChatInput] = useState("");
 
-  // ================= TIMER =================
-  useEffect(() => {
-    let interval;
-    if (joined) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [joined]);
+  const [submissions, setSubmissions] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+
+  const [online, setOnline] = useState(0);
+  const [timer, setTimer] = useState(0);
 
   // ================= JOIN ROOM =================
   const joinRoom = async () => {
@@ -66,9 +57,21 @@ function App() {
       if (data.type === "leaderboard") {
         setLeaderboard(data.data);
       }
+
+      if (data.type === "timer") {
+        setTimer(data.time);
+      }
+
+      if (data.type === "room_ended") {
+        alert("Room ended by admin.");
+        setJoined(false);
+      }
+
+      if (data.type === "room_full") {
+        alert("Room is full (Max 10 users).");
+      }
     };
 
-    // Load problem if exists
     const res = await axios.get(`${BACKEND_URL}/get-problem/${room}`);
     if (res.data.content) {
       setProblem(res.data.content);
@@ -77,31 +80,9 @@ function App() {
     setJoined(true);
   };
 
-  // ================= RUN CODE =================
-  const runCode = async () => {
-    try {
-      const res = await axios.post(`${BACKEND_URL}/run`, { code });
-      setOutput(res.data.output);
-    } catch (err) {
-      setOutput("Error running code");
-    }
-  };
-
-  // ================= SUBMIT =================
-  const submitSolution = () => {
-    if (!code || !ws.current) return;
-
-    ws.current.send(
-      JSON.stringify({
-        type: "submit",
-        code,
-      })
-    );
-  };
-
   // ================= CHAT =================
   const sendMessage = () => {
-    if (!chatInput || !ws.current) return;
+    if (!chatInput) return;
 
     ws.current.send(
       JSON.stringify({
@@ -113,10 +94,40 @@ function App() {
     setChatInput("");
   };
 
-  // ================= ADMIN SAVE PROBLEM =================
-  const saveProblem = async () => {
-    if (!problem || !correctAnswer) return;
+  // ================= RUN =================
+  const runCode = async () => {
+    try {
+      const res = await axios.post(`${BACKEND_URL}/run`, { code });
+      setOutput(res.data.output);
+    } catch {
+      setOutput("Error running code");
+    }
+  };
 
+  // ================= SUBMIT =================
+  const submitSolution = () => {
+    ws.current.send(
+      JSON.stringify({
+        type: "submit",
+        code,
+      })
+    );
+  };
+
+  // ================= ADMIN CONTROLS =================
+  const startTimer = () => {
+    ws.current.send(JSON.stringify({ type: "start_timer" }));
+  };
+
+  const stopTimer = () => {
+    ws.current.send(JSON.stringify({ type: "stop_timer" }));
+  };
+
+  const endRoom = () => {
+    ws.current.send(JSON.stringify({ type: "end_room" }));
+  };
+
+  const saveProblem = async () => {
     await axios.post(`${BACKEND_URL}/set-problem/${room}`, {
       content: problem,
       answer: correctAnswer,
@@ -133,13 +144,13 @@ function App() {
           </h1>
 
           <input
-            className="w-full p-3 mb-4 bg-gray-800 rounded-lg border border-gray-700"
+            className="w-full p-3 mb-4 bg-gray-800 rounded border border-gray-700"
             placeholder="Your Name"
             onChange={(e) => setUsername(e.target.value)}
           />
 
           <input
-            className="w-full p-3 mb-4 bg-gray-800 rounded-lg border border-gray-700"
+            className="w-full p-3 mb-4 bg-gray-800 rounded border border-gray-700"
             placeholder="Room Name"
             onChange={(e) => setRoom(e.target.value)}
           />
@@ -154,7 +165,7 @@ function App() {
 
           <button
             onClick={joinRoom}
-            className="w-full py-3 rounded-lg font-semibold bg-green-600 hover:bg-green-700 transition"
+            className="w-full py-3 rounded bg-green-600 hover:bg-green-700"
           >
             Join Room
           </button>
@@ -173,24 +184,44 @@ function App() {
           <div>
             Room: <span className="text-green-400">{room}</span> | Online: {online}
           </div>
-          <div>⏱ Timer: {timer}s</div>
+
+          <div className="flex items-center gap-4">
+            <div>⏱ {timer}s</div>
+
+            {isAdmin && (
+              <div className="flex gap-2">
+                <button onClick={startTimer}
+                  className="bg-green-600 px-3 py-1 rounded">
+                  Start
+                </button>
+                <button onClick={stopTimer}
+                  className="bg-yellow-600 px-3 py-1 rounded">
+                  Stop
+                </button>
+                <button onClick={endRoom}
+                  className="bg-red-600 px-3 py-1 rounded">
+                  End
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* PROBLEM SECTION */}
+        {/* PROBLEM */}
         <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
-          <h2 className="text-lg font-bold mb-3">Problem</h2>
+          <h2 className="font-bold mb-3">Problem</h2>
 
           <textarea
-            className="w-full h-40 bg-gray-800 p-3 rounded text-white border border-gray-700"
+            className="w-full h-32 bg-gray-800 p-3 rounded border border-gray-700"
             value={problem}
             disabled={!isAdmin}
             onChange={(e) => setProblem(e.target.value)}
           />
 
           {isAdmin && (
-            <div className="mt-3 space-y-3">
+            <>
               <input
-                className="w-full bg-gray-800 p-3 rounded border border-gray-700"
+                className="w-full bg-gray-800 p-3 mt-3 rounded border border-gray-700"
                 placeholder="Correct Output"
                 value={correctAnswer}
                 onChange={(e) => setCorrectAnswer(e.target.value)}
@@ -198,21 +229,21 @@ function App() {
 
               <button
                 onClick={saveProblem}
-                className="bg-purple-600 px-4 py-2 rounded hover:bg-purple-700"
+                className="bg-purple-600 px-4 py-2 mt-3 rounded"
               >
                 Save Problem
               </button>
-            </div>
+            </>
           )}
         </div>
 
         {/* MAIN GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* LEFT SIDE - EDITOR */}
+          {/* LEFT SIDE */}
           <div className="lg:col-span-2 space-y-4">
 
-            <div className="h-[400px] rounded-xl overflow-hidden border border-gray-800">
+            <div className="h-[400px] rounded border border-gray-800 overflow-hidden">
               <Editor
                 height="100%"
                 language="python"
@@ -225,15 +256,13 @@ function App() {
             <div className="flex gap-3">
               <button
                 onClick={runCode}
-                className="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700"
-              >
+                className="bg-blue-600 px-4 py-2 rounded">
                 Run
               </button>
 
               <button
                 onClick={submitSolution}
-                className="bg-green-600 px-4 py-2 rounded hover:bg-green-700"
-              >
+                className="bg-green-600 px-4 py-2 rounded">
                 Submit
               </button>
             </div>
@@ -246,31 +275,28 @@ function App() {
           {/* RIGHT SIDE */}
           <div className="space-y-6">
 
-            {/* LEADERBOARD */}
             <div className="bg-gray-900 p-4 rounded border border-gray-800 h-40 overflow-auto">
               <h3 className="font-bold mb-2">🏆 Leaderboard</h3>
               {leaderboard.map((user, i) => (
-                <div key={i} className="text-sm">
+                <div key={i}>
                   {user[0]} - {user[1]} pts
                 </div>
               ))}
             </div>
 
-            {/* SUBMISSIONS */}
             <div className="bg-gray-900 p-4 rounded border border-gray-800 h-40 overflow-auto">
               <h3 className="font-bold mb-2">📤 Submissions</h3>
               {submissions.map((s, i) => (
-                <div key={i} className="text-sm">
+                <div key={i}>
                   {s.user} - {s.correct ? "✅" : "❌"}
                 </div>
               ))}
             </div>
 
-            {/* CHAT */}
             <div className="bg-gray-900 p-4 rounded border border-gray-800 h-40 overflow-auto">
               <h3 className="font-bold mb-2">💬 Chat</h3>
               {messages.map((msg, i) => (
-                <div key={i} className="text-sm">{msg}</div>
+                <div key={i}>{msg}</div>
               ))}
             </div>
 
@@ -282,8 +308,7 @@ function App() {
               />
               <button
                 onClick={sendMessage}
-                className="bg-green-600 px-3 rounded hover:bg-green-700"
-              >
+                className="bg-green-600 px-3 rounded">
                 Send
               </button>
             </div>
