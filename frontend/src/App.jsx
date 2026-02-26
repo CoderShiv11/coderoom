@@ -22,13 +22,17 @@ function App() {
       `wss://coderoom-backend-muah.onrender.com/ws/${room}/${username}`
     );
 
+    ws.current.onopen = () => {
+      console.log("Connected");
+    };
+
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
       if (data.type === "chat") {
         setMessages((prev) => [
           ...prev,
-          `${data.user || "Anonymous"}: ${data.message}`,
+          `${data.user}: ${data.message}`,
         ]);
       }
 
@@ -37,11 +41,15 @@ function App() {
       }
     };
 
+    ws.current.onerror = (err) => {
+      console.error("WebSocket error", err);
+    };
+
     setJoined(true);
   };
 
   const sendMessage = () => {
-    if (!message) return;
+    if (!message || !ws.current) return;
 
     ws.current.send(
       JSON.stringify({
@@ -58,14 +66,12 @@ function App() {
       const res = await axios.post(`${BACKEND_URL}/run`, {
         code: code,
       });
-
       setOutput(res.data.output);
-    } catch (err) {
+    } catch {
       setOutput("Error running code");
     }
   };
 
-  // ================= JOIN SCREEN =================
   if (!joined) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-gray-900 text-white">
@@ -97,11 +103,9 @@ function App() {
     );
   }
 
-  // ================= MAIN SCREEN =================
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-900 text-white">
 
-      {/* Header */}
       <div className="flex justify-between items-center px-6 py-3 bg-gray-800 border-b border-gray-700">
         <div>
           🚀 Room: <span className="text-green-400">{room}</span> | Online: {online}
@@ -109,10 +113,8 @@ function App() {
         <div>User: {username}</div>
       </div>
 
-      {/* Main Layout */}
       <div className="flex flex-1 w-full overflow-hidden">
 
-        {/* LEFT - CODE SECTION */}
         <div className="flex flex-col flex-[2] p-5 gap-4">
 
           <textarea
@@ -133,7 +135,6 @@ function App() {
           </div>
         </div>
 
-        {/* RIGHT - CHAT SECTION */}
         <div className="flex flex-col flex-1 border-l border-gray-700 p-5">
 
           <h2 className="text-lg font-semibold mb-3">💬 Live Chat</h2>
@@ -164,6 +165,7 @@ function App() {
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );

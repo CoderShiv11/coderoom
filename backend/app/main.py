@@ -1,87 +1,97 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from app.websocket.manager import ConnectionManager
-from app.routes.compiler import execute_python
+from pydantic import BaseModel
+import subprocess
+import tempfile
+import os
+from typing import Dict, List
 
-app = FastAPI(title="CodeRoom API 🚀")
+app = FastAPI()
 
+# Allow frontend origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://coderoom-dusky.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-manager = ConnectionManager()
+rooms: Dict[str, List[WebSocket]] = {}
+online_users: Dict[str, int] = {}
 
-# ---------------- HOME ----------------
+
+class CodeRequest(BaseModel):
+    code: str
+
 
 @app.get("/")
-def home():
+def root():
     return {"message": "CodeRoom Backend Running 🚀"}
 
-# ---------------- RUN (NORMAL RUN BUTTON) ----------------
 
 @app.post("/run")
-async def run_code(payload: dict):
-    code = payload.get("code")
-    user_input = payload.get("input", "")
+def run_code(request: CodeRequest):
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".py", mode="w", encoding="utf-8") as temp:
+            temp.write(request.code)
+            temp_path = temp.name
 
-    output = execute_python(code, user_input)
-    return {"output": output}
+        result = subprocess.run(
+            ["python", temp_path],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
 
-# ---------------- SUBMIT (HIDDEN TESTCASES) ----------------
+        os.unlink(temp_path)
 
-@app.post("/submit")
-async def submit_code(payload: dict):
-    code = payload.get("code")
+        output = result.stdout if result.stdout else result.stderr
+        return {"output": output}
 
-    # Example hidden testcases
-    testcases = [
-        ("10", "30"),
-        ("7", "12"),
-        ("1", "0"),
-        ("20", "110")
-    ]
+    except Exception as e:
+        return {"output": str(e)}
 
-    for input_data, expected_output in testcases:
-        result = execute_python(code, input_data)
-
-        if result == "TIMEOUT":
-            return {"verdict": "Time Limit Exceeded ⏱"}
-
-        if result.strip() != expected_output.strip():
-            return {
-                "verdict": "Wrong Answer ❌",
-                "failed_input": input_data,
-                "expected": expected_output,
-                "got": result
-            }
-
-    return {"verdict": "Accepted ✅"}
-
-# ---------------- WEBSOCKET ----------------
 
 @app.websocket("/ws/{room}/{username}")
 async def websocket_endpoint(websocket: WebSocket, room: str, username: str):
-    await manager.connect(websocket, room, username)
+    await websocket.accept()
+
+    if room not in rooms:
+        rooms[room] = []
+        online_users[room] = 0
+
+    rooms[room].append(websocket)
+    online_users[room] += 1
+
+    # Send updated online count to all
+    for connection in rooms[room]:
+        await connection.send_json({
+            "type": "online",
+            "count": online_users[room]
+        })
 
     try:
-        await manager.broadcast(f"🔵 {username} joined the room", room)
-
         while True:
-            data = await websocket.receive_text()
+            data = await websocket.receive_json()
 
-            if data.startswith("__PROBLEM__:"):
-                host = manager.get_host(room)
-                if username == host:
-                    problem = data.replace("__PROBLEM__:", "")
-                    await manager.update_problem(room, problem)
-            else:
-                await manager.broadcast(data, room)
+            if data.get("type") == "chat":
+                for connection in rooms[room]:
+                    await connection.send_json({
+                        "type": "chat",
+                        "user": username,
+                        "message": data.get("message"),
+                    })
 
     except WebSocketDisconnect:
-        manager.disconnect(websocket, room)
-        await manager.broadcast(f"🔴 {username} left the room", room)
-        await manager.broadcast_users(room)
+        rooms[room].remove(websocket)
+        online_users[room] -= 1
+
+        for connection in rooms[room]:
+            await connection.send_json({
+                "type": "online",
+                "count": online_users[room]
+            })
