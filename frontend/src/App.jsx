@@ -80,8 +80,8 @@ function App() {
 
   if (!joined) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-gray-900 text-white">
-        <div className="bg-gray-800 p-8 rounded-xl w-96 shadow-lg">
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white px-4">
+        <div className="bg-gray-800 p-8 rounded-xl w-full max-w-md shadow-lg">
           <h1 className="text-xl font-bold mb-6 text-center">
             🚀 Join CodeRoom
           </h1>
@@ -118,17 +118,16 @@ function App() {
   }
 
   return (
-    <div className="h-screen w-full bg-gray-900 text-white flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-900 text-white">
 
       {/* HEADER */}
-      <div className="w-full flex justify-between items-center px-8 py-4 bg-gray-800 border-b border-gray-700">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center px-6 py-4 bg-gray-800 border-b border-gray-700 gap-2">
         <div>
           Room: <span className="text-green-400">{room}</span> | Online: {online}
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <span>User: {username}</span>
-
           {isAdmin && (
             <button
               onClick={setNewProblem}
@@ -142,22 +141,22 @@ function App() {
 
       {/* PROBLEM */}
       {problem.title && (
-        <div className="w-full px-8 py-4 bg-gray-800 border-b border-gray-700">
+        <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
           <h2 className="text-lg font-bold mb-1">{problem.title}</h2>
           <p className="text-sm mb-2">{problem.description}</p>
-          <pre className="bg-gray-700 p-3 rounded text-sm">
+          <pre className="bg-gray-700 p-3 rounded text-sm overflow-auto">
 {problem.example}
           </pre>
         </div>
       )}
 
       {/* MAIN CONTENT */}
-      <div className="flex flex-1 w-full">
+      <div className="flex flex-col lg:flex-row flex-1">
 
-        {/* EDITOR SECTION */}
-        <div className="flex flex-col w-2/3 p-6 gap-4">
+        {/* EDITOR */}
+        <div className="flex flex-col flex-1 p-6 gap-4">
 
-          <div className="flex-1 border border-gray-700 rounded overflow-hidden">
+          <div className="flex-1 min-h-[300px] border border-gray-700 rounded overflow-hidden">
             <Editor
               key={room}
               height="100%"
@@ -184,8 +183,8 @@ function App() {
           </div>
         </div>
 
-        {/* CHAT SECTION */}
-        <div className="flex flex-col w-1/3 border-l border-gray-700 p-6">
+        {/* CHAT */}
+        <div className="flex flex-col w-full lg:w-[350px] border-t lg:border-t-0 lg:border-l border-gray-700 p-6">
 
           <h2 className="font-semibold mb-4">💬 Live Chat</h2>
 
