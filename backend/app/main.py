@@ -17,6 +17,7 @@ app.add_middleware(
 MAX_USERS = 10
 
 rooms = {}
+room_passwords = {}
 room_problems = {}
 room_scores = {}
 room_submissions = {}
@@ -27,18 +28,26 @@ room_admin = {}
 # =====================================================
 # WEBSOCKET
 # =====================================================
-@app.websocket("/ws/{room}/{username}")
-async def websocket_endpoint(websocket: WebSocket, room: str, username: str):
+@app.websocket("/ws/{room}/{username}/{password}")
+async def websocket_endpoint(websocket: WebSocket, room: str, username: str, password: str):
     await websocket.accept()
 
-    # Create room if not exists
+    # If room does not exist → create it
     if room not in rooms:
         rooms[room] = []
         room_scores[room] = {}
         room_submissions[room] = []
         room_timer_running[room] = False
         room_time[room] = 0
-        room_admin[room] = username  # first user is admin
+        room_admin[room] = username
+        room_passwords[room] = password
+
+    else:
+        # Room exists → check password
+        if room_passwords.get(room) != password:
+            await websocket.send_json({"type": "wrong_password"})
+            await websocket.close()
+            return
 
     # Room full check
     if len(rooms[room]) >= MAX_USERS:
@@ -57,11 +66,9 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str):
         while True:
             data = await websocket.receive_json()
 
-            # Chat
             if data["type"] == "chat":
                 await broadcast_chat(room, username, data["message"])
 
-            # Submit
             if data["type"] == "submit":
                 correct = check_solution(room, data["code"])
 
@@ -78,7 +85,6 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str):
                 await broadcast_submission(room, submission)
                 await broadcast_leaderboard(room)
 
-            # Admin controls
             if username == room_admin[room]:
 
                 if data["type"] == "start_timer":
@@ -96,7 +102,6 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str):
         rooms[room].remove(websocket)
         room_scores[room].pop(username, None)
 
-        # If room empty → delete everything
         if len(rooms[room]) == 0:
             delete_room(room)
             return
@@ -133,6 +138,7 @@ def delete_room(room):
     room_timer_running.pop(room, None)
     room_time.pop(room, None)
     room_admin.pop(room, None)
+    room_passwords.pop(room, None)
 
 
 def check_solution(room, code):
