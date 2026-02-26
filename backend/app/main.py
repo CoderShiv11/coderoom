@@ -2,6 +2,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import subprocess
+import asyncio
 
 app = FastAPI()
 
@@ -23,13 +24,14 @@ room_timer_running = {}
 room_time = {}
 room_admin = {}
 
-# =========================
+# =====================================================
 # WEBSOCKET
-# =========================
+# =====================================================
 @app.websocket("/ws/{room}/{username}")
 async def websocket_endpoint(websocket: WebSocket, room: str, username: str):
     await websocket.accept()
 
+    # Create room if not exists
     if room not in rooms:
         rooms[room] = []
         room_scores[room] = {}
@@ -38,7 +40,7 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str):
         room_time[room] = 0
         room_admin[room] = username  # first user is admin
 
-    # Limit users
+    # Room full check
     if len(rooms[room]) >= MAX_USERS:
         await websocket.send_json({"type": "room_full"})
         await websocket.close()
@@ -55,11 +57,14 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str):
         while True:
             data = await websocket.receive_json()
 
+            # Chat
             if data["type"] == "chat":
                 await broadcast_chat(room, username, data["message"])
 
+            # Submit
             if data["type"] == "submit":
                 correct = check_solution(room, data["code"])
+
                 if correct:
                     room_scores[room][username] += 10
 
@@ -69,46 +74,67 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str):
                 }
 
                 room_submissions[room].append(submission)
+
                 await broadcast_submission(room, submission)
                 await broadcast_leaderboard(room)
 
-            if data["type"] == "start_timer" and username == room_admin[room]:
-                room_timer_running[room] = True
-                await broadcast_timer(room)
+            # Admin controls
+            if username == room_admin[room]:
 
-            if data["type"] == "stop_timer" and username == room_admin[room]:
-                room_timer_running[room] = False
-                await broadcast_timer(room)
+                if data["type"] == "start_timer":
+                    room_timer_running[room] = True
 
-            if data["type"] == "end_room" and username == room_admin[room]:
-                await broadcast_end(room)
+                if data["type"] == "stop_timer":
+                    room_timer_running[room] = False
+
+                if data["type"] == "end_room":
+                    await broadcast_end(room)
+                    return
 
     except WebSocketDisconnect:
+
         rooms[room].remove(websocket)
+        room_scores[room].pop(username, None)
+
+        # If room empty → delete everything
+        if len(rooms[room]) == 0:
+            delete_room(room)
+            return
+
         await broadcast_online(room)
+        await broadcast_leaderboard(room)
 
 
-# =========================
+# =====================================================
 # TIMER LOOP
-# =========================
-import asyncio
-
+# =====================================================
 async def timer_loop():
     while True:
-        for room in rooms:
+        for room in list(rooms.keys()):
             if room_timer_running.get(room):
                 room_time[room] += 1
                 await broadcast_timer(room)
         await asyncio.sleep(1)
+
 
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(timer_loop())
 
 
-# =========================
+# =====================================================
 # HELPERS
-# =========================
+# =====================================================
+def delete_room(room):
+    rooms.pop(room, None)
+    room_scores.pop(room, None)
+    room_submissions.pop(room, None)
+    room_problems.pop(room, None)
+    room_timer_running.pop(room, None)
+    room_time.pop(room, None)
+    room_admin.pop(room, None)
+
+
 def check_solution(room, code):
     if room not in room_problems:
         return False
@@ -158,6 +184,7 @@ async def broadcast_leaderboard(room):
         key=lambda x: x[1],
         reverse=True
     )
+
     for connection in rooms[room]:
         await connection.send_json({
             "type": "leaderboard",
@@ -180,10 +207,12 @@ async def broadcast_end(room):
             "type": "room_ended"
         })
 
+    delete_room(room)
 
-# =========================
+
+# =====================================================
 # PROBLEM API
-# =========================
+# =====================================================
 class Problem(BaseModel):
     content: str
     answer: str
@@ -203,9 +232,9 @@ def get_problem(room: str):
     return room_problems.get(room, {})
 
 
-# =========================
+# =====================================================
 # RUN CODE
-# =========================
+# =====================================================
 class Code(BaseModel):
     code: str
 
