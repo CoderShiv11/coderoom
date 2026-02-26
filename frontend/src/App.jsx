@@ -29,10 +29,7 @@ function App() {
       const data = JSON.parse(event.data);
 
       if (data.type === "chat") {
-        setMessages((prev) => [
-          ...prev,
-          `${data.user}: ${data.message}`,
-        ]);
+        setMessages((prev) => [...prev, `${data.user}: ${data.message}`]);
       }
 
       if (data.type === "online") {
@@ -68,9 +65,9 @@ function App() {
   };
 
   const setNewProblem = async () => {
-    const title = prompt("Enter Problem Title:");
-    const description = prompt("Enter Description:");
-    const example = prompt("Enter Example:");
+    const title = prompt("Problem Title:");
+    const description = prompt("Description:");
+    const example = prompt("Example:");
 
     await axios.post(`${BACKEND_URL}/set-problem/${room}`, {
       title,
@@ -84,8 +81,10 @@ function App() {
   if (!joined) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-900 text-white">
-        <div className="bg-gray-800 p-8 rounded-xl w-96">
-          <h1 className="text-xl mb-4">🚀 Join CodeRoom</h1>
+        <div className="bg-gray-800 p-8 rounded-xl w-96 shadow-lg">
+          <h1 className="text-xl font-bold mb-6 text-center">
+            🚀 Join CodeRoom
+          </h1>
 
           <input
             className="w-full p-2 mb-3 bg-gray-700 rounded"
@@ -99,7 +98,7 @@ function App() {
             onChange={(e) => setRoom(e.target.value)}
           />
 
-          <label className="flex items-center gap-2 mb-3">
+          <label className="flex items-center gap-2 mb-4">
             <input
               type="checkbox"
               onChange={(e) => setIsAdmin(e.target.checked)}
@@ -109,7 +108,7 @@ function App() {
 
           <button
             onClick={joinRoom}
-            className="w-full bg-green-500 py-2 rounded"
+            className="w-full bg-green-500 py-2 rounded font-semibold"
           >
             Join Room
           </button>
@@ -119,57 +118,82 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-900 text-white">
+    <div className="h-screen bg-gray-900 text-white flex flex-col">
 
-      <div className="flex justify-between p-4 bg-gray-800">
-        <div>Room: {room} | Online: {online}</div>
-        {isAdmin && (
-          <button
-            onClick={setNewProblem}
-            className="bg-purple-600 px-3 py-1 rounded"
-          >
-            Set Problem
-          </button>
-        )}
+      {/* HEADER */}
+      <div className="flex justify-between items-center px-8 py-4 bg-gray-800 border-b border-gray-700">
+        <div className="font-semibold">
+          Room: <span className="text-green-400">{room}</span> | Online: {online}
+        </div>
+
+        <div className="flex items-center gap-6">
+          <span>User: {username}</span>
+
+          {isAdmin && (
+            <button
+              onClick={setNewProblem}
+              className="bg-purple-600 px-4 py-1 rounded"
+            >
+              Set Problem
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* PROBLEM SECTION */}
       {problem.title && (
-        <div className="bg-gray-800 p-4 border-b border-gray-700">
-          <h2 className="text-xl font-bold">{problem.title}</h2>
-          <p>{problem.description}</p>
-          <pre className="bg-gray-700 p-2 mt-2 rounded">
+        <div className="px-8 py-4 bg-gray-800 border-b border-gray-700">
+          <h2 className="text-xl font-bold mb-2">{problem.title}</h2>
+          <p className="text-sm mb-2">{problem.description}</p>
+          <pre className="bg-gray-700 p-3 rounded text-sm">
 {problem.example}
           </pre>
         </div>
       )}
 
-      <div className="flex flex-1">
+      {/* MAIN CONTENT */}
+      <div className="flex flex-1 overflow-hidden px-8 py-6 gap-6">
 
-        <div className="flex flex-col flex-[2] p-4 gap-3">
-          <Editor
-            height="400px"
-            language="python"
-            theme="vs-dark"
-            value={code}
-            onChange={(value) => setCode(value)}
-          />
+        {/* EDITOR SIDE */}
+        <div className="flex flex-col w-[70%] gap-4">
+
+          <div className="rounded-lg overflow-hidden border border-gray-700">
+            <Editor
+              height="400px"
+              language="python"
+              theme="vs-dark"
+              value={code}
+              onChange={(value) => setCode(value)}
+              options={{
+                fontSize: 14,
+                minimap: { enabled: false },
+              }}
+            />
+          </div>
 
           <button
             onClick={runCode}
-            className="bg-blue-600 py-2 rounded"
+            className="bg-blue-600 py-2 rounded font-semibold"
           >
             ▶ Run Code
           </button>
 
-          <div className="bg-black p-3 h-32 overflow-auto rounded">
+          <div className="bg-black p-4 h-32 rounded border border-gray-700 overflow-auto text-sm">
             <pre>{output}</pre>
           </div>
         </div>
 
-        <div className="flex flex-col flex-1 border-l border-gray-700 p-4">
-          <div className="flex-1 overflow-auto mb-3">
+        {/* CHAT SIDE */}
+        <div className="flex flex-col w-[30%] border border-gray-700 rounded-lg p-4 bg-gray-800">
+
+          <h2 className="font-semibold mb-4">💬 Live Chat</h2>
+
+          <div className="flex-1 overflow-auto mb-3 space-y-2">
             {messages.map((msg, i) => (
-              <div key={i} className="mb-2">
+              <div
+                key={i}
+                className="bg-gray-700 p-2 rounded text-sm"
+              >
                 {msg}
               </div>
             ))}
@@ -180,10 +204,11 @@ function App() {
               className="flex-1 p-2 bg-gray-700 rounded"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type message..."
             />
             <button
               onClick={sendMessage}
-              className="bg-green-500 px-4 rounded"
+              className="bg-green-500 px-4 rounded font-semibold"
             >
               Send
             </button>
