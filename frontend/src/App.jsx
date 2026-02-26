@@ -64,7 +64,7 @@ function App() {
 
   if (!joined) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-900">
+      <div className="h-screen w-screen flex items-center justify-center bg-gray-900 text-white">
         <div className="bg-gray-800 p-8 rounded-xl w-96 shadow-xl">
           <h1 className="text-2xl font-bold mb-6 text-center">
             🚀 Join CodeRoom
@@ -94,8 +94,8 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-900 text-white">
-      
+    <div className="h-screen w-screen flex flex-col bg-gray-900 text-white">
+
       {/* Header */}
       <div className="flex justify-between items-center px-6 py-3 bg-gray-800">
         <div>
@@ -104,16 +104,16 @@ function App() {
         <div>User: {username}</div>
       </div>
 
-      {/* Main Section */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* Main Container */}
+      <div className="flex flex-1 w-full overflow-hidden">
 
-        {/* LEFT SIDE - CODE */}
-        <div className="w-2/3 flex flex-col p-4 gap-3">
+        {/* CODE SECTION */}
+        <div className="flex flex-col flex-[2] p-4 gap-3">
 
           <textarea
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className="flex-1 bg-black p-4 rounded resize-none"
+            className="flex-1 bg-black p-4 rounded resize-none w-full"
           />
 
           <button
@@ -128,8 +128,8 @@ function App() {
           </div>
         </div>
 
-        {/* RIGHT SIDE - CHAT */}
-        <div className="w-1/3 flex flex-col border-l border-gray-700 p-4">
+        {/* CHAT SECTION */}
+        <div className="flex flex-col flex-1 border-l border-gray-700 p-4">
 
           <h2 className="text-lg font-semibold mb-3">💬 Live Chat</h2>
 
