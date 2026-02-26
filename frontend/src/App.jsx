@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import axios from "axios";
 
 const BACKEND_URL = "https://coderoom-backend-muah.onrender.com";
@@ -26,7 +26,10 @@ function App() {
       const data = JSON.parse(event.data);
 
       if (data.type === "chat") {
-        setMessages((prev) => [...prev, `${data.user}: ${data.message}`]);
+        setMessages((prev) => [
+          ...prev,
+          `${data.user || "Anonymous"}: ${data.message}`,
+        ]);
       }
 
       if (data.type === "online") {
@@ -62,29 +65,30 @@ function App() {
     }
   };
 
+  // ================= JOIN SCREEN =================
   if (!joined) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-gray-900 text-white">
-        <div className="bg-gray-800 p-8 rounded-xl w-96 shadow-xl">
+        <div className="bg-gray-800 p-8 rounded-xl w-96 shadow-xl border border-gray-700">
           <h1 className="text-2xl font-bold mb-6 text-center">
             🚀 Join CodeRoom
           </h1>
 
           <input
-            className="w-full p-2 mb-3 bg-gray-700 rounded"
+            className="w-full p-2 mb-3 bg-gray-700 rounded-lg"
             placeholder="Your Name"
             onChange={(e) => setUsername(e.target.value)}
           />
 
           <input
-            className="w-full p-2 mb-4 bg-gray-700 rounded"
+            className="w-full p-2 mb-4 bg-gray-700 rounded-lg"
             placeholder="Room Name"
             onChange={(e) => setRoom(e.target.value)}
           />
 
           <button
             onClick={joinRoom}
-            className="w-full bg-green-500 py-2 rounded font-semibold"
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 py-2 rounded-lg font-semibold shadow-md hover:scale-[1.02] transition"
           >
             Join Room
           </button>
@@ -93,49 +97,53 @@ function App() {
     );
   }
 
+  // ================= MAIN SCREEN =================
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-900 text-white">
 
       {/* Header */}
-      <div className="flex justify-between items-center px-6 py-3 bg-gray-800">
+      <div className="flex justify-between items-center px-6 py-3 bg-gray-800 border-b border-gray-700">
         <div>
           🚀 Room: <span className="text-green-400">{room}</span> | Online: {online}
         </div>
         <div>User: {username}</div>
       </div>
 
-      {/* Main Container */}
+      {/* Main Layout */}
       <div className="flex flex-1 w-full overflow-hidden">
 
-        {/* CODE SECTION */}
-        <div className="flex flex-col flex-[2] p-4 gap-3">
+        {/* LEFT - CODE SECTION */}
+        <div className="flex flex-col flex-[2] p-5 gap-4">
 
           <textarea
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className="flex-1 bg-black p-4 rounded resize-none w-full"
+            className="flex-1 bg-black p-4 rounded-lg resize-none w-full border border-gray-700 shadow-inner text-sm"
           />
 
           <button
             onClick={runCode}
-            className="bg-blue-500 py-2 rounded"
+            className="bg-gradient-to-r from-blue-500 to-indigo-600 py-2 rounded-lg font-semibold shadow-md hover:scale-[1.02] transition"
           >
             ▶ Run Code
           </button>
 
-          <div className="bg-black p-4 rounded h-40 overflow-auto">
+          <div className="bg-black p-4 rounded-lg h-32 overflow-auto border border-gray-700 text-sm">
             <pre>{output}</pre>
           </div>
         </div>
 
-        {/* CHAT SECTION */}
-        <div className="flex flex-col flex-1 border-l border-gray-700 p-4">
+        {/* RIGHT - CHAT SECTION */}
+        <div className="flex flex-col flex-1 border-l border-gray-700 p-5">
 
           <h2 className="text-lg font-semibold mb-3">💬 Live Chat</h2>
 
-          <div className="flex-1 bg-gray-800 rounded p-3 overflow-auto mb-3">
+          <div className="flex-1 bg-gray-800 rounded-lg p-3 overflow-auto mb-3 border border-gray-700">
             {messages.map((msg, i) => (
-              <div key={i} className="mb-2">
+              <div
+                key={i}
+                className="mb-2 bg-gray-700 px-3 py-2 rounded-md text-sm"
+              >
                 {msg}
               </div>
             ))}
@@ -143,14 +151,14 @@ function App() {
 
           <div className="flex gap-2">
             <input
-              className="flex-1 p-2 bg-gray-700 rounded"
+              className="flex-1 p-2 bg-gray-700 rounded-lg"
               placeholder="Type message..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />
             <button
               onClick={sendMessage}
-              className="bg-green-500 px-4 rounded"
+              className="bg-green-500 px-4 rounded-lg font-semibold hover:scale-[1.05] transition"
             >
               Send
             </button>
