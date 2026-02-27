@@ -18,6 +18,7 @@ function App() {
   const [problem, setProblem] = useState("");
   const [correctAnswer, setCorrectAnswer] = useState("");
   const [code, setCode] = useState("");
+  const [userInput, setUserInput] = useState("");
   const [output, setOutput] = useState("");
   const [messages, setMessages] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
@@ -41,7 +42,6 @@ function App() {
     setPassword(cleanPassword);
     setIsAdmin(adminMode);
 
-    // Wake backend (important for Render free)
     await fetch(BACKEND_URL);
 
     ws.current = new WebSocket(
@@ -53,7 +53,7 @@ function App() {
 
       if (data.type === "wrong_password") return alert("Wrong password");
       if (data.type === "room_not_found") return alert("Room not found");
-      if (data.type === "room_full") return alert("Room full (Max 10)");
+      if (data.type === "room_full") return alert("Room full");
 
       if (data.type === "online") setOnline(data.count);
       if (data.type === "chat")
@@ -61,7 +61,7 @@ function App() {
       if (data.type === "leaderboard") setLeaderboard(data.data);
       if (data.type === "timer") setTimer(data.time);
       if (data.type === "room_ended") {
-        alert("Room ended by admin");
+        alert("Room ended");
         setPage("home");
       }
     };
@@ -72,20 +72,22 @@ function App() {
     setPage("room");
   };
 
-  // ================= ACTIONS =================
-  const sendMessage = () => {
-    if (!chatInput) return;
-    ws.current.send(JSON.stringify({ type: "chat", message: chatInput }));
-    setChatInput("");
-  };
-
   const runCode = async () => {
-    const res = await axios.post(`${BACKEND_URL}/run`, { code });
+    const res = await axios.post(`${BACKEND_URL}/run`, {
+      code,
+      user_input: userInput,
+    });
     setOutput(res.data.output);
   };
 
   const submitSolution = () => {
     ws.current.send(JSON.stringify({ type: "submit", code }));
+  };
+
+  const sendMessage = () => {
+    if (!chatInput) return;
+    ws.current.send(JSON.stringify({ type: "chat", message: chatInput }));
+    setChatInput("");
   };
 
   const saveProblem = async () => {
@@ -109,17 +111,17 @@ function App() {
   if (page === "home") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white px-4">
-        <div className="bg-gray-900 p-10 rounded-xl w-full max-w-md text-center space-y-6 shadow-xl">
-          <h1 className="text-3xl font-bold">🚀 CodeRoom</h1>
+        <div className="bg-gray-900 p-10 rounded-2xl w-full max-w-md space-y-6 shadow-2xl border border-gray-800 text-center">
+          <h1 className="text-3xl font-bold tracking-wide">🚀 CodeRoom</h1>
           <button
             onClick={() => setPage("create")}
-            className="w-full py-3 bg-green-600 rounded-lg hover:bg-green-700"
+            className="w-full py-3 bg-green-600 rounded-lg hover:bg-green-700 transition"
           >
             Create Room
           </button>
           <button
             onClick={() => setPage("join")}
-            className="w-full py-3 bg-blue-600 rounded-lg hover:bg-blue-700"
+            className="w-full py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition"
           >
             Join Room
           </button>
@@ -133,31 +135,31 @@ function App() {
     const isCreate = page === "create";
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white px-4">
-        <div className="bg-gray-900 p-8 rounded-xl w-full max-w-md space-y-4 shadow-xl">
+        <div className="bg-gray-900 p-8 rounded-2xl w-full max-w-md space-y-4 shadow-2xl border border-gray-800">
           <h2 className="text-xl font-bold text-center">
             {isCreate ? "Create Room" : "Join Room"}
           </h2>
           <input
-            className="w-full p-3 bg-gray-800 rounded"
-            placeholder="Name"
+            className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700"
+            placeholder="Your Name"
             onChange={(e) => setUsername(e.target.value)}
           />
           <input
-            className="w-full p-3 bg-gray-800 rounded"
-            placeholder="Room"
+            className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700"
+            placeholder="Room Name"
             onChange={(e) => setRoom(e.target.value)}
           />
           <input
-            className="w-full p-3 bg-gray-800 rounded"
-            placeholder="Password"
             type="password"
+            className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700"
+            placeholder="Password"
             onChange={(e) => setPassword(e.target.value)}
           />
           <button
             onClick={() => connectRoom(isCreate)}
-            className="w-full py-3 bg-green-600 rounded-lg"
+            className="w-full py-3 bg-indigo-600 rounded-lg hover:bg-indigo-700 transition"
           >
-            {isCreate ? "Create & Enter" : "Join"}
+            {isCreate ? "Create & Enter" : "Join Room"}
           </button>
           <button
             onClick={() => setPage("home")}
@@ -176,84 +178,109 @@ function App() {
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row justify-between items-center bg-gray-900 p-4 rounded-xl">
-          <div className="font-semibold">
-            Room: {room} | 👥 {online}
+        <div className="bg-gray-900 p-4 rounded-2xl flex flex-col md:flex-row justify-between items-center border border-gray-800">
+          <div className="text-lg font-semibold">
+            Room: <span className="text-green-400">{room}</span>
           </div>
-          <div className="flex items-center gap-3 mt-2 md:mt-0">
-            <span>⏱ {timer}s</span>
+          <div className="flex items-center gap-4 mt-3 md:mt-0">
+            <span className="bg-gray-800 px-3 py-1 rounded-full">
+              👥 {online}
+            </span>
+            <span className="bg-gray-800 px-3 py-1 rounded-full">
+              ⏱ {timer}s
+            </span>
             {isAdmin && (
-              <>
-                <button onClick={startTimer} className="bg-green-600 px-3 py-1 rounded">Start</button>
-                <button onClick={stopTimer} className="bg-yellow-600 px-3 py-1 rounded">Stop</button>
-                <button onClick={endRoom} className="bg-red-600 px-3 py-1 rounded">End</button>
-              </>
+              <div className="flex gap-2">
+                <button onClick={startTimer} className="bg-green-600 px-3 py-1 rounded-lg">Start</button>
+                <button onClick={stopTimer} className="bg-yellow-600 px-3 py-1 rounded-lg">Stop</button>
+                <button onClick={endRoom} className="bg-red-600 px-3 py-1 rounded-lg">End</button>
+              </div>
             )}
           </div>
         </div>
 
-        {/* PROBLEM */}
-        <div className="bg-gray-900 p-6 rounded-xl space-y-4">
-          <h2 className="font-bold">Problem</h2>
-          <textarea
-            className="w-full h-28 bg-gray-800 p-3 rounded"
-            value={problem}
-            disabled={!isAdmin}
-            onChange={(e) => setProblem(e.target.value)}
-          />
-          {isAdmin && (
-            <>
-              <input
-                className="w-full p-3 bg-gray-800 rounded"
-                placeholder="Correct Output"
-                onChange={(e) => setCorrectAnswer(e.target.value)}
-              />
-              <button
-                onClick={saveProblem}
-                className="bg-purple-600 px-4 py-2 rounded"
-              >
-                Save
-              </button>
-            </>
-          )}
-        </div>
+        {/* MAIN GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* GRID */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* EDITOR */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="h-96 border border-gray-800 rounded">
-              <Editor
-                height="100%"
-                language="python"
-                theme="vs-dark"
-                value={code}
-                onChange={(v) => setCode(v)}
+          {/* LEFT SIDE */}
+          <div className="lg:col-span-2 space-y-6">
+
+            {/* Problem */}
+            <div className="bg-gray-900 p-5 rounded-2xl border border-gray-800 space-y-3">
+              <h3 className="font-bold text-lg">Problem</h3>
+              <textarea
+                className="w-full h-24 bg-gray-800 p-3 rounded-lg"
+                value={problem}
+                disabled={!isAdmin}
+                onChange={(e) => setProblem(e.target.value)}
+              />
+              {isAdmin && (
+                <>
+                  <input
+                    className="w-full p-3 bg-gray-800 rounded-lg"
+                    placeholder="Correct Output"
+                    onChange={(e) => setCorrectAnswer(e.target.value)}
+                  />
+                  <button
+                    onClick={saveProblem}
+                    className="bg-purple-600 px-4 py-2 rounded-lg"
+                  >
+                    Save Problem
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Editor */}
+            <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800">
+              <div className="h-96 rounded-lg overflow-hidden">
+                <Editor
+                  height="100%"
+                  language="python"
+                  theme="vs-dark"
+                  value={code}
+                  onChange={(v) => setCode(v)}
+                />
+              </div>
+            </div>
+
+            {/* Input */}
+            <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800">
+              <h3 className="font-bold mb-2">Custom Input</h3>
+              <textarea
+                className="w-full h-20 bg-gray-800 p-3 rounded-lg"
+                placeholder="Enter input here..."
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
               />
             </div>
-            <div className="flex gap-3">
-              <button onClick={runCode} className="bg-blue-600 px-4 py-2 rounded">
-                Run
+
+            {/* Buttons */}
+            <div className="flex gap-4">
+              <button onClick={runCode} className="bg-blue-600 px-6 py-2 rounded-lg">
+                Run Code
               </button>
-              <button onClick={submitSolution} className="bg-green-600 px-4 py-2 rounded">
+              <button onClick={submitSolution} className="bg-green-600 px-6 py-2 rounded-lg">
                 Submit
               </button>
             </div>
-            <div className="bg-black p-3 h-28 overflow-auto rounded">
+
+            {/* Output */}
+            <div className="bg-black p-4 rounded-2xl border border-gray-800 h-32 overflow-auto">
               <pre>{output}</pre>
             </div>
           </div>
 
-          {/* RIGHT PANEL */}
+          {/* RIGHT SIDE */}
           <div className="space-y-6">
-            <div className="bg-gray-900 p-4 rounded-xl h-40 overflow-auto">
+            <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800 h-48 overflow-auto">
               <h3 className="font-bold mb-2">🏆 Leaderboard</h3>
               {leaderboard.map((u, i) => (
                 <div key={i}>{u[0]} - {u[1]} pts</div>
               ))}
             </div>
 
-            <div className="bg-gray-900 p-4 rounded-xl h-40 overflow-auto">
+            <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800 h-48 overflow-auto">
               <h3 className="font-bold mb-2">💬 Chat</h3>
               {messages.map((m, i) => (
                 <div key={i}>{m}</div>
@@ -262,17 +289,16 @@ function App() {
 
             <div className="flex gap-2">
               <input
-                className="flex-1 bg-gray-800 p-2 rounded"
+                className="flex-1 bg-gray-800 p-2 rounded-lg"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
               />
-              <button onClick={sendMessage} className="bg-green-600 px-3 rounded">
+              <button onClick={sendMessage} className="bg-green-600 px-4 rounded-lg">
                 Send
               </button>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
