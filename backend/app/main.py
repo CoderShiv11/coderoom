@@ -28,9 +28,13 @@ room_admin = {}
 @app.websocket("/ws/{room}/{username}/{password}/{admin}")
 async def websocket_endpoint(websocket: WebSocket, room: str, username: str, password: str, admin: str):
 
+    # 🔥 Normalize inputs (IMPORTANT FIX)
+    room = room.strip().lower()
+    username = username.strip()
+    password = password.strip()
     is_admin = admin == "true"
 
-    # ROOM NOT EXIST
+    # ROOM DOES NOT EXIST
     if room not in rooms:
         if not is_admin:
             await websocket.accept()
@@ -79,10 +83,8 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str, pas
 
             if data["type"] == "submit":
                 correct = check_solution(room, data["code"])
-
                 if correct:
                     room_scores[room][username] += 10
-
                 await broadcast_leaderboard(room)
 
             if username == room_admin[room]:
@@ -204,6 +206,7 @@ class Problem(BaseModel):
 
 @app.post("/set-problem/{room}")
 def set_problem(room: str, problem: Problem):
+    room = room.strip().lower()
     room_problems[room] = {
         "content": problem.content,
         "answer": problem.answer
@@ -212,6 +215,7 @@ def set_problem(room: str, problem: Problem):
 
 @app.get("/get-problem/{room}")
 def get_problem(room: str):
+    room = room.strip().lower()
     return room_problems.get(room, {})
 
 
