@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
 
 const BACKEND_URL = "https://coderoom-backend-muah.onrender.com";
@@ -7,6 +7,7 @@ function App() {
   const ws = useRef(null);
 
   const [page, setPage] = useState("home");
+
   const [username, setUsername] = useState("");
   const [room, setRoom] = useState("");
   const [password, setPassword] = useState("");
@@ -43,7 +44,6 @@ function App() {
     }
 
     setIsAdmin(adminMode);
-    await fetch(BACKEND_URL);
 
     ws.current = new WebSocket(
       `wss://coderoom-backend-muah.onrender.com/ws/${cleanRoom}/${cleanUsername}/${cleanPassword}/${adminMode}`
@@ -56,14 +56,16 @@ function App() {
       if (data.type === "timer") setTimer(data.time);
       if (data.type === "leaderboard") setLeaderboard(data.data);
 
-      if (data.type === "chat")
+      if (data.type === "chat") {
         setMessages((prev) => [...prev, `${data.user}: ${data.message}`]);
+      }
 
       if (data.type === "question") {
         setProblem(data.content);
         setQuestionIndex(data.index);
         setTotalQuestions(data.total);
         setCode("");
+        setUserInput("");
         setOutput("");
       }
 
@@ -105,7 +107,7 @@ function App() {
   const endRoom = () =>
     ws.current.send(JSON.stringify({ type: "end_room" }));
 
-  // ================= ACTIONS =================
+  // ================= RUN =================
   const runCode = async () => {
     const res = await fetch(`${BACKEND_URL}/run`, {
       method: "POST",
@@ -117,6 +119,7 @@ function App() {
     setOutput(data.output);
   };
 
+  // ================= SUBMIT =================
   const submitSolution = () => {
     ws.current.send(
       JSON.stringify({
@@ -129,6 +132,7 @@ function App() {
 
   const refreshEditor = () => {
     setCode("");
+    setUserInput("");
     setOutput("");
   };
 
@@ -161,7 +165,7 @@ function App() {
     );
   }
 
-  // ================= CREATE/JOIN =================
+  // ================= CREATE / JOIN =================
   if (page === "create" || page === "join") {
     const isCreate = page === "create";
 
@@ -231,28 +235,19 @@ function App() {
       {/* MAIN */}
       <div className="flex-1 p-6 space-y-6">
 
-        {/* QUESTION HEADER */}
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold">
             Question {questionIndex} / {totalQuestions}
           </h2>
-
-          <div className="flex gap-3">
-            <button onClick={refreshEditor} className="bg-gray-700 px-4 py-2 rounded-xl">
-              Refresh
-            </button>
-            <button onClick={() => setShowChat(!showChat)} className="bg-purple-600 px-4 py-2 rounded-xl">
-              Chat
-            </button>
-          </div>
+          <button onClick={refreshEditor} className="bg-gray-700 px-4 py-2 rounded-xl">
+            Refresh
+          </button>
         </div>
 
-        {/* PROBLEM */}
         <div className="bg-gray-900/70 p-5 rounded-2xl">
           <pre className="whitespace-pre-wrap">{problem}</pre>
         </div>
 
-        {/* ADMIN ADD QUESTION */}
         {isAdmin && (
           <div className="bg-gray-900/70 p-5 rounded-2xl space-y-3">
             <textarea
@@ -278,7 +273,6 @@ function App() {
           </div>
         )}
 
-        {/* EDITOR */}
         <div className="h-96 rounded-xl overflow-hidden">
           <Editor
             height="100%"
@@ -289,15 +283,13 @@ function App() {
           />
         </div>
 
-        {/* INPUT BOX */}
         <textarea
           className="w-full p-3 bg-gray-800 rounded-xl"
-          placeholder="Custom Input (if question requires input)"
+          placeholder="Custom Input"
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
         />
 
-        {/* BUTTONS */}
         <div className="flex gap-4">
           <button onClick={runCode} className="bg-indigo-600 px-6 py-2 rounded-xl">
             Run
@@ -305,14 +297,15 @@ function App() {
           <button onClick={submitSolution} className="bg-green-600 px-6 py-2 rounded-xl">
             Submit
           </button>
+          <button onClick={() => setShowChat(!showChat)} className="bg-purple-600 px-6 py-2 rounded-xl">
+            Chat
+          </button>
         </div>
 
-        {/* OUTPUT */}
         <div className="bg-black p-4 rounded-2xl h-32 overflow-auto border border-gray-800">
           <pre>{output}</pre>
         </div>
 
-        {/* LEADERBOARD */}
         <div className="bg-gray-900/70 p-5 rounded-2xl">
           <h3 className="font-bold mb-3">🏆 Leaderboard</h3>
           {leaderboard.map((u, i) => (
@@ -321,7 +314,6 @@ function App() {
         </div>
       </div>
 
-      {/* FLOATING CHAT */}
       {showChat && (
         <div className="fixed bottom-5 right-5 w-80 bg-gray-900 p-4 rounded-2xl shadow-2xl">
           <h3 className="font-bold mb-2">💬 Chat</h3>
