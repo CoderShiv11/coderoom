@@ -66,7 +66,9 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str, pas
 
     await websocket.accept()
     rooms[room].append(websocket)
-    room_scores[room][username] = 0
+
+    if username not in room_scores[room]:
+        room_scores[room][username] = 0
 
     await broadcast_online(room)
     await broadcast_leaderboard(room)
@@ -77,15 +79,24 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str, pas
         while True:
             data = await websocket.receive_json()
 
+            # ===== CHAT =====
             if data["type"] == "chat":
                 await broadcast_chat(room, username, data["message"])
 
+            # ===== SUBMIT =====
             if data["type"] == "submit":
-                correct = check_solution(room, data["code"], data.get("user_input", ""))
+                correct = check_solution(
+                    room,
+                    data.get("code", ""),
+                    data.get("user_input", "")
+                )
+
                 if correct:
                     room_scores[room][username] += 10
+
                 await broadcast_leaderboard(room)
 
+            # ===== ADMIN =====
             if username == room_admin[room]:
 
                 if data["type"] == "add_question":
@@ -111,8 +122,8 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str, pas
                     return
 
     except WebSocketDisconnect:
+
         rooms[room].remove(websocket)
-        room_scores[room].pop(username, None)
 
         if len(rooms[room]) == 0:
             delete_room(room)
@@ -120,7 +131,6 @@ async def websocket_endpoint(websocket: WebSocket, room: str, username: str, pas
 
         await broadcast_online(room)
         await broadcast_leaderboard(room)
-
 
 # ================= TIMER =================
 async def timer_loop():
@@ -135,7 +145,6 @@ async def timer_loop():
 async def startup_event():
     asyncio.create_task(timer_loop())
 
-
 # ================= HELPERS =================
 def delete_room(room):
     rooms.pop(room, None)
@@ -145,7 +154,6 @@ def delete_room(room):
     room_time.pop(room, None)
     room_admin.pop(room, None)
     room_questions.pop(room, None)
-
 
 def check_solution(room, code, user_input):
     questions = room_questions[room]["questions"]
@@ -168,27 +176,39 @@ def check_solution(room, code, user_input):
     except:
         return False
 
-
 async def broadcast_chat(room, username, message):
     for conn in rooms[room]:
-        await conn.send_json({"type": "chat", "user": username, "message": message})
-
+        await conn.send_json({
+            "type": "chat",
+            "user": username,
+            "message": message
+        })
 
 async def broadcast_online(room):
     for conn in rooms[room]:
-        await conn.send_json({"type": "online", "count": len(rooms[room])})
-
+        await conn.send_json({
+            "type": "online",
+            "count": len(rooms[room])
+        })
 
 async def broadcast_leaderboard(room):
-    leaderboard = sorted(room_scores[room].items(), key=lambda x: x[1], reverse=True)
+    leaderboard = sorted(
+        room_scores[room].items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
     for conn in rooms[room]:
-        await conn.send_json({"type": "leaderboard", "data": leaderboard})
-
+        await conn.send_json({
+            "type": "leaderboard",
+            "data": leaderboard
+        })
 
 async def broadcast_timer(room):
     for conn in rooms[room]:
-        await conn.send_json({"type": "timer", "time": room_time[room]})
-
+        await conn.send_json({
+            "type": "timer",
+            "time": room_time[room]
+        })
 
 async def broadcast_question(room):
     questions = room_questions[room]["questions"]
@@ -207,14 +227,12 @@ async def broadcast_question(room):
             "total": len(questions)
         })
 
-
 async def broadcast_end(room):
     for conn in rooms[room]:
         await conn.send_json({"type": "room_ended"})
     delete_room(room)
 
-
-# ================= RUN WITH INPUT =================
+# ================= RUN =================
 class Code(BaseModel):
     code: str
     user_input: str = ""
