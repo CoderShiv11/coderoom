@@ -4,7 +4,6 @@
     <title>CodeRoom</title>
     <meta charset="UTF-8">
 
-    <!-- Monaco Editor CDN -->
     <script src="https://unpkg.com/monaco-editor@0.34.1/min/vs/loader.js"></script>
 
     <style>
@@ -66,6 +65,10 @@
 
 <textarea id="inputBox" placeholder="Enter input here..."></textarea>
 
+<br>
+<input type="text" id="username" placeholder="Enter username">
+
+<br>
 <button id="runBtn" type="button">Run</button>
 <button id="submitBtn" type="button">Submit</button>
 
@@ -74,94 +77,82 @@
 <h3>🏆 Leaderboard</h3>
 <div id="leaderboard"></div>
 
-
 <script>
-    // ---------------- MONACO SETUP ----------------
-    let editor;
+let editor;
 
-    require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.34.1/min/vs' }});
-    require(['vs/editor/editor.main'], function () {
-        editor = monaco.editor.create(document.getElementById('editor'), {
-            value: `number = int(input())
+require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.34.1/min/vs' }});
+require(['vs/editor/editor.main'], function () {
+    editor = monaco.editor.create(document.getElementById('editor'), {
+        value: `number = int(input())
 
 if number % 2 == 0:
     print("Even")
 else:
     print("Odd")`,
-            language: 'python',
-            theme: 'vs-dark'
-        });
+        language: 'python',
+        theme: 'vs-dark'
+    });
+});
+
+const runBtn = document.getElementById("runBtn");
+const submitBtn = document.getElementById("submitBtn");
+const outputBox = document.getElementById("output");
+const leaderboardBox = document.getElementById("leaderboard");
+
+function getCode() {
+    return editor.getValue();
+}
+
+runBtn.addEventListener("click", async () => {
+
+    const response = await fetch("/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            username: document.getElementById("username").value,
+            code: getCode(),
+            input_data: document.getElementById("inputBox").value
+        })
     });
 
-    const runBtn = document.getElementById("runBtn");
-    const submitBtn = document.getElementById("submitBtn");
-    const outputBox = document.getElementById("output");
-    const leaderboardBox = document.getElementById("leaderboard");
-    const inputBox = document.getElementById("inputBox");
+    const data = await response.json();
+    outputBox.innerText = data.output || data.error;
+});
 
-    const username = "shiv"; // change later with login
+submitBtn.addEventListener("click", async () => {
 
-    function getCode() {
-        return editor.getValue();
-    }
-
-    // ---------------- RUN ----------------
-    runBtn.addEventListener("click", async () => {
-
-        const response = await fetch("/run", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                username: username,
-                code: getCode(),
-                input_data: inputBox.value
-            })
-        });
-
-        const data = await response.json();
-        outputBox.innerText = data.output || data.error;
+    const response = await fetch("/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            username: document.getElementById("username").value,
+            code: getCode(),
+            input_data: document.getElementById("inputBox").value
+        })
     });
 
+    const data = await response.json();
 
-    // ---------------- SUBMIT ----------------
-    submitBtn.addEventListener("click", async () => {
+    outputBox.innerText =
+        data.output + "\nScore Added: " + data.score_added;
 
-        const response = await fetch("/submit", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                username: username,
-                code: getCode(),
-                input_data: inputBox.value
-            })
-        });
+    loadLeaderboard();
+});
 
-        const data = await response.json();
+async function loadLeaderboard() {
+    const response = await fetch("/leaderboard");
+    const data = await response.json();
 
-        outputBox.innerText =
-            data.output + "\n\nScore Added: " + data.score_added;
+    leaderboardBox.innerHTML = "";
 
-        loadLeaderboard();
+    data.forEach(user => {
+        const div = document.createElement("div");
+        div.innerText = user.username + " - " + user.score + " pts";
+        leaderboardBox.appendChild(div);
     });
+}
 
-
-    // ---------------- LEADERBOARD ----------------
-    async function loadLeaderboard() {
-
-        const response = await fetch("/leaderboard");
-        const data = await response.json();
-
-        leaderboardBox.innerHTML = "";
-
-        data.forEach(user => {
-            const div = document.createElement("div");
-            div.innerText = user.username + " - " + (user.score || 0) + " pts";
-            leaderboardBox.appendChild(div);
-        });
-    }
-
-    window.onload = loadLeaderboard;
-
+window.onload = loadLeaderboard;
 </script>
 
 </body>
