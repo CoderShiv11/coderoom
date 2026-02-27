@@ -20,6 +20,7 @@ function App() {
   const [newAnswer, setNewAnswer] = useState("");
 
   const [code, setCode] = useState("");
+  const [userInput, setUserInput] = useState("");
   const [output, setOutput] = useState("");
 
   const [online, setOnline] = useState(0);
@@ -78,6 +79,7 @@ function App() {
   // ================= ADMIN =================
   const addQuestion = () => {
     if (!newQuestion || !newAnswer) return;
+
     ws.current.send(
       JSON.stringify({
         type: "add_question",
@@ -85,6 +87,7 @@ function App() {
         answer: newAnswer,
       })
     );
+
     setNewQuestion("");
     setNewAnswer("");
   };
@@ -95,8 +98,10 @@ function App() {
 
   const startTimer = () =>
     ws.current.send(JSON.stringify({ type: "start_timer" }));
+
   const stopTimer = () =>
     ws.current.send(JSON.stringify({ type: "stop_timer" }));
+
   const endRoom = () =>
     ws.current.send(JSON.stringify({ type: "end_room" }));
 
@@ -105,14 +110,21 @@ function App() {
     const res = await fetch(`${BACKEND_URL}/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, user_input: userInput }),
     });
+
     const data = await res.json();
     setOutput(data.output);
   };
 
   const submitSolution = () => {
-    ws.current.send(JSON.stringify({ type: "submit", code }));
+    ws.current.send(
+      JSON.stringify({
+        type: "submit",
+        code,
+        user_input: userInput,
+      })
+    );
   };
 
   const refreshEditor = () => {
@@ -276,6 +288,14 @@ function App() {
             onChange={(v) => setCode(v)}
           />
         </div>
+
+        {/* INPUT BOX */}
+        <textarea
+          className="w-full p-3 bg-gray-800 rounded-xl"
+          placeholder="Custom Input (if question requires input)"
+          value={userInput}
+          onChange={(e) => setUserInput(e.target.value)}
+        />
 
         {/* BUTTONS */}
         <div className="flex gap-4">
