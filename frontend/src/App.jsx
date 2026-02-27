@@ -8,13 +8,13 @@ function App() {
   const ws = useRef(null);
   const [page, setPage] = useState("home");
 
-  // User Info
+  // User
   const [username, setUsername] = useState("");
   const [room, setRoom] = useState("");
   const [password, setPassword] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Room Data
+  // Room
   const [problem, setProblem] = useState("");
   const [correctAnswer, setCorrectAnswer] = useState("");
   const [code, setCode] = useState("");
@@ -25,6 +25,7 @@ function App() {
   const [online, setOnline] = useState(0);
   const [timer, setTimer] = useState(0);
   const [chatInput, setChatInput] = useState("");
+  const [showChat, setShowChat] = useState(false);
 
   // ================= CONNECT =================
   const connectRoom = async (adminMode) => {
@@ -37,9 +38,6 @@ function App() {
       return;
     }
 
-    setUsername(cleanUsername);
-    setRoom(cleanRoom);
-    setPassword(cleanPassword);
     setIsAdmin(adminMode);
 
     await fetch(BACKEND_URL);
@@ -72,12 +70,18 @@ function App() {
     setPage("room");
   };
 
+  // ================= ACTIONS =================
   const runCode = async () => {
     const res = await axios.post(`${BACKEND_URL}/run`, {
       code,
       user_input: userInput,
     });
     setOutput(res.data.output);
+  };
+
+  const refreshEditor = () => {
+    setCode("");
+    setOutput("");
   };
 
   const submitSolution = () => {
@@ -110,18 +114,20 @@ function App() {
   // ================= HOME =================
   if (page === "home") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white px-4">
-        <div className="bg-gray-900 p-10 rounded-2xl w-full max-w-md space-y-6 shadow-2xl border border-gray-800 text-center">
-          <h1 className="text-3xl font-bold tracking-wide">🚀 CodeRoom</h1>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-gray-900 to-black text-white px-4">
+        <div className="bg-gray-900/70 backdrop-blur-lg p-10 rounded-3xl w-full max-w-md space-y-6 shadow-2xl border border-gray-800 text-center">
+          <h1 className="text-4xl font-extrabold tracking-wide">
+            🚀 CodeRoom
+          </h1>
           <button
             onClick={() => setPage("create")}
-            className="w-full py-3 bg-green-600 rounded-lg hover:bg-green-700 transition"
+            className="w-full py-3 bg-indigo-600 rounded-xl hover:scale-105 transition"
           >
             Create Room
           </button>
           <button
             onClick={() => setPage("join")}
-            className="w-full py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition"
+            className="w-full py-3 bg-purple-600 rounded-xl hover:scale-105 transition"
           >
             Join Room
           </button>
@@ -133,37 +139,41 @@ function App() {
   // ================= CREATE / JOIN =================
   if (page === "create" || page === "join") {
     const isCreate = page === "create";
+
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white px-4">
-        <div className="bg-gray-900 p-8 rounded-2xl w-full max-w-md space-y-4 shadow-2xl border border-gray-800">
-          <h2 className="text-xl font-bold text-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-gray-900 to-black text-white px-4">
+        <div className="bg-gray-900/70 backdrop-blur-lg p-8 rounded-3xl w-full max-w-md space-y-4 shadow-2xl border border-gray-800">
+          <h2 className="text-2xl font-bold text-center">
             {isCreate ? "Create Room" : "Join Room"}
           </h2>
+
           <input
-            className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700"
+            className="w-full p-3 bg-gray-800 rounded-xl"
             placeholder="Your Name"
             onChange={(e) => setUsername(e.target.value)}
           />
           <input
-            className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700"
+            className="w-full p-3 bg-gray-800 rounded-xl"
             placeholder="Room Name"
             onChange={(e) => setRoom(e.target.value)}
           />
           <input
             type="password"
-            className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700"
+            className="w-full p-3 bg-gray-800 rounded-xl"
             placeholder="Password"
             onChange={(e) => setPassword(e.target.value)}
           />
+
           <button
             onClick={() => connectRoom(isCreate)}
-            className="w-full py-3 bg-indigo-600 rounded-lg hover:bg-indigo-700 transition"
+            className="w-full py-3 bg-indigo-600 rounded-xl hover:scale-105 transition"
           >
             {isCreate ? "Create & Enter" : "Join Room"}
           </button>
+
           <button
             onClick={() => setPage("home")}
-            className="w-full py-2 bg-gray-700 rounded-lg"
+            className="w-full py-2 bg-gray-700 rounded-xl"
           >
             Back
           </button>
@@ -174,132 +184,106 @@ function App() {
 
   // ================= ROOM =================
   return (
-    <div className="min-h-screen bg-gray-950 text-white px-4 py-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-gray-900 to-black text-white flex">
 
-        {/* HEADER */}
-        <div className="bg-gray-900 p-4 rounded-2xl flex flex-col md:flex-row justify-between items-center border border-gray-800">
-          <div className="text-lg font-semibold">
-            Room: <span className="text-green-400">{room}</span>
+      {/* SIDEBAR */}
+      <div className="hidden md:flex flex-col w-60 bg-black/40 backdrop-blur-lg border-r border-gray-800 p-6 space-y-6">
+        <h2 className="text-xl font-bold">Room Info</h2>
+        <div>👤 {username}</div>
+        <div>🏠 {room}</div>
+        <div>👥 Online: {online}</div>
+        <div>⏱ {timer}s</div>
+
+        {isAdmin && (
+          <div className="space-y-2">
+            <button onClick={startTimer} className="w-full bg-green-600 py-2 rounded-lg">Start</button>
+            <button onClick={stopTimer} className="w-full bg-yellow-600 py-2 rounded-lg">Stop</button>
+            <button onClick={endRoom} className="w-full bg-red-600 py-2 rounded-lg">End</button>
           </div>
-          <div className="flex items-center gap-4 mt-3 md:mt-0">
-            <span className="bg-gray-800 px-3 py-1 rounded-full">
-              👥 {online}
-            </span>
-            <span className="bg-gray-800 px-3 py-1 rounded-full">
-              ⏱ {timer}s
-            </span>
-            {isAdmin && (
-              <div className="flex gap-2">
-                <button onClick={startTimer} className="bg-green-600 px-3 py-1 rounded-lg">Start</button>
-                <button onClick={stopTimer} className="bg-yellow-600 px-3 py-1 rounded-lg">Stop</button>
-                <button onClick={endRoom} className="bg-red-600 px-3 py-1 rounded-lg">End</button>
-              </div>
-            )}
+        )}
+      </div>
+
+      {/* MAIN */}
+      <div className="flex-1 p-6 space-y-6">
+
+        {/* Problem */}
+        <div className="bg-gray-900/70 backdrop-blur-lg p-5 rounded-2xl border border-gray-800">
+          <h3 className="font-bold text-lg mb-3">Problem</h3>
+          <textarea
+            className="w-full h-24 bg-gray-800 p-3 rounded-xl"
+            value={problem}
+            disabled={!isAdmin}
+            onChange={(e) => setProblem(e.target.value)}
+          />
+        </div>
+
+        {/* Editor */}
+        <div className="bg-gray-900/70 p-4 rounded-2xl border border-gray-800">
+          <div className="h-96 rounded-xl overflow-hidden">
+            <Editor
+              height="100%"
+              language="python"
+              theme="vs-dark"
+              value={code}
+              onChange={(v) => setCode(v)}
+            />
           </div>
         </div>
 
-        {/* MAIN GRID */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Input */}
+        <textarea
+          className="w-full h-20 bg-gray-800 p-3 rounded-xl"
+          placeholder="Custom Input"
+          value={userInput}
+          onChange={(e) => setUserInput(e.target.value)}
+        />
 
-          {/* LEFT SIDE */}
-          <div className="lg:col-span-2 space-y-6">
+        {/* Buttons */}
+        <div className="flex flex-wrap gap-4">
+          <button onClick={runCode} className="bg-indigo-600 px-6 py-2 rounded-xl hover:scale-105 transition">
+            Run
+          </button>
+          <button onClick={submitSolution} className="bg-green-600 px-6 py-2 rounded-xl hover:scale-105 transition">
+            Submit
+          </button>
+          <button onClick={refreshEditor} className="bg-gray-700 px-6 py-2 rounded-xl hover:scale-105 transition">
+            Refresh
+          </button>
+          <button
+            onClick={() => setShowChat(!showChat)}
+            className="bg-purple-600 px-6 py-2 rounded-xl hover:scale-105 transition"
+          >
+            Chat
+          </button>
+        </div>
 
-            {/* Problem */}
-            <div className="bg-gray-900 p-5 rounded-2xl border border-gray-800 space-y-3">
-              <h3 className="font-bold text-lg">Problem</h3>
-              <textarea
-                className="w-full h-24 bg-gray-800 p-3 rounded-lg"
-                value={problem}
-                disabled={!isAdmin}
-                onChange={(e) => setProblem(e.target.value)}
-              />
-              {isAdmin && (
-                <>
-                  <input
-                    className="w-full p-3 bg-gray-800 rounded-lg"
-                    placeholder="Correct Output"
-                    onChange={(e) => setCorrectAnswer(e.target.value)}
-                  />
-                  <button
-                    onClick={saveProblem}
-                    className="bg-purple-600 px-4 py-2 rounded-lg"
-                  >
-                    Save Problem
-                  </button>
-                </>
-              )}
-            </div>
-
-            {/* Editor */}
-            <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800">
-              <div className="h-96 rounded-lg overflow-hidden">
-                <Editor
-                  height="100%"
-                  language="python"
-                  theme="vs-dark"
-                  value={code}
-                  onChange={(v) => setCode(v)}
-                />
-              </div>
-            </div>
-
-            {/* Input */}
-            <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800">
-              <h3 className="font-bold mb-2">Custom Input</h3>
-              <textarea
-                className="w-full h-20 bg-gray-800 p-3 rounded-lg"
-                placeholder="Enter input here..."
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-              />
-            </div>
-
-            {/* Buttons */}
-            <div className="flex gap-4">
-              <button onClick={runCode} className="bg-blue-600 px-6 py-2 rounded-lg">
-                Run Code
-              </button>
-              <button onClick={submitSolution} className="bg-green-600 px-6 py-2 rounded-lg">
-                Submit
-              </button>
-            </div>
-
-            {/* Output */}
-            <div className="bg-black p-4 rounded-2xl border border-gray-800 h-32 overflow-auto">
-              <pre>{output}</pre>
-            </div>
-          </div>
-
-          {/* RIGHT SIDE */}
-          <div className="space-y-6">
-            <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800 h-48 overflow-auto">
-              <h3 className="font-bold mb-2">🏆 Leaderboard</h3>
-              {leaderboard.map((u, i) => (
-                <div key={i}>{u[0]} - {u[1]} pts</div>
-              ))}
-            </div>
-
-            <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800 h-48 overflow-auto">
-              <h3 className="font-bold mb-2">💬 Chat</h3>
-              {messages.map((m, i) => (
-                <div key={i}>{m}</div>
-              ))}
-            </div>
-
-            <div className="flex gap-2">
-              <input
-                className="flex-1 bg-gray-800 p-2 rounded-lg"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-              />
-              <button onClick={sendMessage} className="bg-green-600 px-4 rounded-lg">
-                Send
-              </button>
-            </div>
-          </div>
+        {/* Output */}
+        <div className="bg-black p-4 rounded-2xl h-32 overflow-auto border border-gray-800">
+          <pre>{output}</pre>
         </div>
       </div>
+
+      {/* FLOATING CHAT */}
+      {showChat && (
+        <div className="fixed bottom-5 right-5 w-80 bg-gray-900 p-4 rounded-2xl border border-gray-800 shadow-2xl">
+          <h3 className="font-bold mb-2">💬 Chat</h3>
+          <div className="h-40 overflow-auto mb-2">
+            {messages.map((m, i) => (
+              <div key={i}>{m}</div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              className="flex-1 bg-gray-800 p-2 rounded-lg"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+            />
+            <button onClick={sendMessage} className="bg-indigo-600 px-3 rounded-lg">
+              Send
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
